@@ -62,12 +62,13 @@ jobs:
 
       - name: Terraform apply (inventory only)
         working-directory: terraform/environments/core/veilgate-cloud
+        env:
+          TF_VAR_repo_root: ${{ github.workspace }}
         run: |
           terraform apply \
             -auto-approve \
             -lock=false \
             -target=module.inventory_export
-
 
       # -------------------------------
       #       Ansible — ping
