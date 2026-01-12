@@ -1,0 +1,8 @@
+---
+# {{ ansible_managed }}
+
+- name: Restart headscale stack
+  ansible.builtin.command:
+    cmd: docker compose -f "{{ headscale_compose_path }}" restart
+  when: not ansible_check_mode
+  changed_when: true

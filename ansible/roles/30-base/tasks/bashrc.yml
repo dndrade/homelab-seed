@@ -1,0 +1,13 @@
+---
+
+- name: Ensure ~/.bashrc sources ~/.bashrc.d
+  ansible.builtin.blockinfile:
+    path: "~/.bashrc"
+    marker: "# {mark} VEILGATE BASHRC.D"
+    block: |
+      # Load user bashrc.d snippets
+      if [ -d "$HOME/.bashrc.d" ]; then
+        for f in "$HOME/.bashrc.d"/*.sh; do
+          [ -r "$f" ] && . "$f"
+        done
+      fi

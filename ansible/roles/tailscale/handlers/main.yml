@@ -1,0 +1,9 @@
+---
+- name: Tailscale | Restart service
+  community.docker.docker_compose_v2:
+    project_src: "{{ tailscale_root }}"
+    services:
+      - tailscale
+    state: present
+    restarted: true
+  when: not ansible_check_mode

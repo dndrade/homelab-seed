@@ -1,0 +1,88 @@
+---
+# ==========================================
+#           Preflight validation
+# ==========================================
+# Purpose:
+#   - Fail fast before making any changes
+#   - Validate runtime context (CI / secrets)
+#   - Validate system compatibility
+# ==========================================
+
+# ------------------------------------------
+#           Minimal facts
+# ------------------------------------------
+
+- name: Collect minimal facts
+  ansible.builtin.setup:
+    gather_subset:
+      - '!all'
+      - min
+      - network
+
+# ------------------------------------------
+#       Runtime / CI safety checks
+# ------------------------------------------
+
+- name: Assert required configuration variables exist
+  ansible.builtin.assert:
+    that:
+      - project_domain is defined
+      - project_domain | length > 0
+      - project_admin_email is defined
+      - project_admin_email | length > 0
+      - project_user is defined
+      - project_user | length > 0
+      - host_name is defined
+      - host_name | length > 0
+      - host_ip is defined
+      - host_ip | length > 0
+      - ssh_user is defined
+      - ssh_user | length > 0
+    fail_msg: >
+      Required configuration variables are missing.
+      Check that SOPS secrets are loaded and group_vars/all.yml is configured.
+      Required: project_domain, project_admin_email, project_user, host_name, host_ip, ssh_user
+
+# ------------------------------------------
+#       Platform validation
+# ------------------------------------------
+
+- name: Assert OS family
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution in preflight_allowed_os
+    fail_msg: "Unsupported OS: {{ ansible_facts.distribution }}"
+
+- name: Assert architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.architecture == preflight_required_arch
+    fail_msg: "Unsupported architecture: {{ ansible_facts.architecture }}"
+
+- name: Assert systemd is init system
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.service_mgr == "systemd"
+    fail_msg: "systemd is required"
+
+- name: Assert kernel version
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.kernel is version(preflight_min_kernel, ">=")
+    fail_msg: "Kernel {{ ansible_facts.kernel }} < {{ preflight_min_kernel }}"
+
+- name: Assert apt is the package manager
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.pkg_mgr == "apt"
+    fail_msg: "apt is required, found {{ ansible_facts.pkg_mgr }}"
+
+# ------------------------------------------
+#   Privilege escalation sanity check
+# ------------------------------------------
+
+- name: Assert sudo works
+  ansible.builtin.command: whoami
+  become: true
+  changed_when: false
+  when: not ansible_check_mode

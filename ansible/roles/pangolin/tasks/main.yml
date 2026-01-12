@@ -1,0 +1,17 @@
+---
+# Pangolin role
+
+- name: Pangolin | Load/deploy api_key
+  ansible.builtin.import_tasks: api_key.yml
+
+- name: Pangolin | Filesystem layout
+  ansible.builtin.import_tasks: layout.yml
+
+- name: Pangolin | Render configuration
+  ansible.builtin.import_tasks: config.yml
+
+- name: Pangolin | Runtime orchestration
+  ansible.builtin.import_tasks: runtime.yml
+
+- name: Pangolin | Blueprint application
+  ansible.builtin.import_tasks: blueprint.yml

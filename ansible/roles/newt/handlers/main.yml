@@ -1,0 +1,9 @@
+---
+- name: Restart newt stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ newt_root }}"
+    services:
+      - newt
+    state: present
+    restarted: true
+  when: not ansible_check_mode

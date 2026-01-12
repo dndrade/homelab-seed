@@ -1,0 +1,66 @@
+---
+# Base role - project infrastructure skeleton
+
+#                  Project root
+# =====================================================
+- name: Ensure project infrastructure root exists
+  ansible.builtin.file:
+    path: "{{ project_root }}"
+    state: directory
+    owner: "{{ base_user }}"
+    group: "{{ base_group }}"
+    mode: "0755"
+
+#                   Banner setup
+# =====================================================
+- name: Load bashrc.d sourcing logic
+  ansible.builtin.import_tasks: bashrc.yml
+
+- name: Ensure ~/.bashrc.d exists
+  ansible.builtin.file:
+    path: "~{{ project_user }}/.bashrc.d"
+    state: directory
+    owner: "{{ base_user }}"
+    group: "{{ base_group }}"
+    mode: "0755"
+
+- name: Install project login banner
+  ansible.builtin.template:
+    src: veilgate-banner.sh.j2
+    dest: "~{{ project_user }}/.bashrc.d/project-banner.sh"
+    owner: "{{ base_user }}"
+    group: "{{ base_group }}"
+    mode: "0644"
+
+#           Top-level skeleton structure
+# =====================================================
+- name: Deploy root docker-compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ project_compose_file }}"
+    owner: "{{ base_user }}"
+    group: "{{ base_group }}"
+    mode: "0644"
+
+- name: Create top-level project directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ base_user }}"
+    group: "{{ base_group }}"
+    mode: "0755"
+  loop:
+    - "{{ project_backup_dir }}"
+    - "{{ project_scripts_dir }}"
+    - "{{ project_services_dir }}"
+
+#              Service root directories
+# =====================================================
+- name: Create service root directories
+  ansible.builtin.file:
+    path: "{{ project_services[item].root }}"
+    state: directory
+    owner: "{{ base_user }}"
+    group: "{{ base_group }}"
+    mode: "0755"
+  loop: "{{ project_service_names }}"

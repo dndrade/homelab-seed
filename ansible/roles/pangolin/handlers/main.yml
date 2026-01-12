@@ -1,0 +1,20 @@
+---
+# Pangolin role handlers
+
+- name: Pangolin | Restart service
+  community.docker.docker_compose_v2:
+    project_src: "{{ pangolin_root }}"
+    services:
+      - pangolin
+    state: present
+    restarted: true
+  when: not ansible_check_mode
+
+- name: Pangolin | Restart Traefik
+  community.docker.docker_compose_v2:
+    project_src: "{{ pangolin_root }}"
+    services:
+      - traefik
+    state: present
+    restarted: true
+  when: not ansible_check_mode

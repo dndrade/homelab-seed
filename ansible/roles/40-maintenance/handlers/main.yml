@@ -1,0 +1,27 @@
+---
+
+#
+#                 Conditional reboot
+# ========================================================
+
+- name: Reboot if required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: maintenance_reboot_flag
+
+- name: Log reboot requirement
+  ansible.builtin.debug:
+    msg: >
+      System reboot is required due to package upgrades.
+      Reboot allowed: {{ maintenance_allow_reboot }}
+  when:
+    - maintenance_verbose
+    - maintenance_reboot_flag.stat.exists
+
+- name: Reboot system if required and allowed
+  ansible.builtin.reboot:
+    msg: "Reboot triggered by 40-maintenance"
+    reboot_timeout: 600
+  when:
+    - maintenance_allow_reboot
+    - maintenance_reboot_flag.stat.exists

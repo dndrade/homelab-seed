@@ -1,0 +1,34 @@
+version: '3'
+
+includes:
+  terraform:
+    taskfile: terraform/Taskfile.yml
+    dir: .
+  ansible:
+    taskfile: ansible/Taskfile.yml
+
+env:
+  REPO_ROOT: "{{.PWD}}"
+
+tasks:
+  deploy:
+    desc: Full infra + config deployment
+    cmds:
+      - echo "🚀 Starting deployment"
+      - task terraform:apply
+      - task ansible:deploy
+      - echo "✅ Deployment complete"
+
+  check:
+    desc: Safe dry-run
+    cmds:
+      - echo "🔍 Dry run"
+      - task terraform:plan
+      - task ansible:check
+
+  destroy:
+    desc: Tear everything down
+    cmds:
+      - echo "⚠️ Destroying infrastructure"
+      - task terraform:destroy
+      - echo "💥 Infrastructure destroyed"

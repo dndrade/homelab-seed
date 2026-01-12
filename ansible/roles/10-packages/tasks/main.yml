@@ -1,0 +1,68 @@
+---
+#
+# SECTION 1 — Core OS packages
+#
+# ===============================================
+
+- name: Install core OS packages
+  ansible.builtin.apt:
+    name: "{{ packages_core }}"
+    state: present
+  register: core_pkg_result
+
+
+#
+# Python runtime & SDK dependencies
+# ===============================================
+
+- name: Install Python runtime packages
+  ansible.builtin.apt:
+    name: "{{ packages_python }}"
+    state: present
+  register: python_pkg_result
+
+
+#
+#     Operational utilities
+# ===============================================
+
+- name: Install ops utility packages
+  ansible.builtin.apt:
+    name: "{{ packages_ops }}"
+    state: present
+  register: ops_pkg_result
+
+
+#
+# SECTION 4 — Package verification
+# ===============================================
+
+- name: Package verification (real runs only)
+  when: not ansible_check_mode
+  block:
+
+    - name: Gather installed package facts
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Verify required packages are installed
+      ansible.builtin.fail:
+        msg: "Required package {{ item }} is missing!"
+      loop:
+        - curl
+        - git
+        - python3
+        - python3-pip
+        - python3-docker
+      when: item not in ansible_facts.packages
+
+#
+# SECTION 5 — Installation summary & logging
+# ===============================================
+
+- name: Report package installation summary
+  ansible.builtin.debug:
+    msg: |
+      Core packages changed: {{ core_pkg_result.changed }}
+      Python packages changed: {{ python_pkg_result.changed }}
+      Ops packages changed: {{ ops_pkg_result.changed }}

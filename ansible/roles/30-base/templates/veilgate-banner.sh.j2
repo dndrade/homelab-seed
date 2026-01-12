@@ -1,0 +1,10 @@
+# =====================================================
+# Veilgate user-space banner
+# Loaded for interactive shells only
+# =====================================================
+
+[[ $- != *i* ]] && return
+
+echo "🏡 {{ project_role | upper }} Infrastructure"
+echo "Domain: {{ project_domain }}"
+echo "Node: {{ inventory_hostname }}"

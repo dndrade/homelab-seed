@@ -1,0 +1,156 @@
+---
+# Headscale role
+
+# ==========================================
+#           Secrets / preflight
+# ==========================================
+
+- name: Headscale | Load secrets
+  ansible.builtin.import_tasks: env.yml
+
+# ==========================================
+#        Stateful safety guard
+# ==========================================
+
+- name: Check Headscale stateful data directory exists
+  ansible.builtin.stat:
+    path: "{{ headscale_data_dir }}"
+  register: headscale_data_stat
+
+- name: Abort if data directory missing (protection)
+  ansible.builtin.fail:
+    msg: >
+      Headscale data directory {{ headscale_data_dir }} does not exist.
+      This indicates either:
+      1. Wrong target host, or
+      2. New deployment (set headscale_bootstrap=true)
+  when:
+    - not headscale_data_stat.stat.exists
+    - not (headscale_bootstrap | default(false))
+
+# ==========================================
+#         Directory structure
+# ==========================================
+
+- name: Headscale | Ensure directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ headscale_owner }}"
+    group: "{{ headscale_group }}"
+    mode: "0755"
+  loop:
+    - "{{ headscale_root }}"
+    - "{{ headscale_config_dir }}"
+    - "{{ headscale_data_dir }}"
+
+# ==========================================
+#    Check existing configuration state
+# ==========================================
+
+- name: Check which config files exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: headscale_config_stats
+  loop:
+    - "{{ headscale_cfg_path }}"
+    - "{{ headscale_acl_path }}"
+
+- name: Set facts for existing configs
+  ansible.builtin.set_fact:
+    headscale_config_exists: >-
+      {{
+        (headscale_config_stats.results
+        | selectattr('item', 'equalto', headscale_cfg_path)
+        | first).stat.exists | default(false) | bool
+      }}
+    headscale_acl_exists: >-
+      {{
+        (headscale_config_stats.results
+        | selectattr('item', 'equalto', headscale_acl_path)
+        | first).stat.exists | default(false) | bool
+      }}
+
+# ==========================================
+#       Deploy protected configs
+# ==========================================
+
+- name: Deploy Headscale configuration (protected)
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ headscale_cfg_path }}"
+    owner: "{{ headscale_owner }}"
+    group: "{{ headscale_group }}"
+    mode: "0644"
+  when: (headscale_bootstrap | default(false)) or not headscale_config_exists
+  notify: Restart headscale stack
+
+- name: Deploy Headscale ACL (protected)
+  ansible.builtin.template:
+    src: acl.json.j2
+    dest: "{{ headscale_acl_path }}"
+    owner: "{{ headscale_owner }}"
+    group: "{{ headscale_group }}"
+    mode: "0644"
+  when: (headscale_bootstrap | default(false)) or not headscale_acl_exists
+  notify: Restart headscale stack
+
+- name: Deploy API key
+  ansible.builtin.copy:
+    dest: "{{ headscale_api_key_file }}"
+    content: "{{ headscale_api_key }}"
+    owner: "{{ headscale_owner }}"
+    group: "{{ headscale_group }}"
+    mode: '0600'
+  when: (headscale_bootstrap | default(false)) or not headscale_key_exists
+  no_log: true
+  notify: Restart headscale stack
+
+# ==========================================
+#      Deploy always-updateable files
+# ==========================================
+
+- name: Deploy docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ headscale_compose_path }}"
+    owner: "{{ headscale_owner }}"
+    group: "{{ headscale_group }}"
+    mode: "0644"
+  notify: Restart headscale stack
+
+- name: Deploy environment file
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ headscale_env_path }}"
+    owner: "{{ headscale_owner }}"
+    group: "{{ headscale_group }}"
+    mode: "0600"
+  no_log: true
+
+# ==========================================
+#           Stack management
+# ==========================================
+
+- name: Check if Headscale container exists
+  ansible.builtin.command:
+    cmd: docker ps -aq --filter "name=headscale"
+  register: headscale_container_check
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Ensure Headscale stack is running
+  ansible.builtin.command:
+    cmd: docker compose -f "{{ headscale_compose_path }}" up -d
+  when:
+    - not ansible_check_mode
+    - headscale_container_check.stdout | length == 0
+  changed_when: true
+
+- name: Display deployment status
+  ansible.builtin.debug:
+    msg:
+      - "Config deployed: {{ 'yes' if (headscale_bootstrap | default(false)) or not headscale_config_exists else 'skipped (exists)' }}"
+      - "ACL deployed: {{ 'yes' if (headscale_bootstrap | default(false)) or not headscale_acl_exists else 'skipped (exists)' }}"
+      - "API key deployed: {{ 'yes' if (headscale_bootstrap | default(false)) or not headscale_key_exists else 'skipped (exists)' }}"
+      - "Docker compose: updated"

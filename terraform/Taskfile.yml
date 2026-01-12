@@ -1,0 +1,24 @@
+version: '3'
+
+vars:
+  ENV: core/veilgate-cloud
+  TF_DIR: terraform/environments/{{.ENV}}
+
+tasks:
+  init:
+    cmds:
+      - terraform -chdir={{.TF_DIR}} init
+
+  apply:
+    cmds:
+      - echo "-> Terraform apply ({{.ENV}})"
+      - terraform -chdir={{.TF_DIR}} apply -auto-approve -var="repo_root={{.REPO_ROOT}}"
+
+  plan:
+    cmds:
+      - terraform -chdir={{.TF_DIR}} plan
+
+  destroy:
+    cmds:
+      - echo "💥 Terraform destroy ({{.ENV}})"
+      - terraform -chdir={{.TF_DIR}} destroy -auto-approve

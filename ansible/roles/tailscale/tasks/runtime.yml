@@ -1,0 +1,14 @@
+---
+- name: Render Tailscale docker-compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ tailscale_compose_path }}"
+    owner: "{{ project_user }}"
+    group: "{{ project_group }}"
+    mode: "0644"
+  notify: Tailscale | Restart service
+
+- name: Ensure Tailscale stack is running
+  community.docker.docker_compose_v2:
+    project_src: "{{ tailscale_root }}"
+    state: present

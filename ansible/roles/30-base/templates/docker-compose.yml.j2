@@ -1,0 +1,11 @@
+# ~/veilgate-infra/docker-compose.yml
+include:
+  - path: ./services/pangolin/docker-compose.yml
+  - path: ./services/headscale/docker-compose.yml
+  - path: ./services/tailscale/docker-compose.yml
+  # Uncomment when ready for monitoring
+  # - path: ./services/monitoring/docker-compose.yml
+
+networks:
+  pangolin:
+    name: pangolin

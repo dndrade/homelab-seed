@@ -1,0 +1,9 @@
+---
+- name: Tailscale | Stateful safety guard
+  ansible.builtin.import_tasks: guard.yml
+
+- name: Tailscale | Filesystem layout
+  ansible.builtin.import_tasks: layout.yml
+
+- name: Tailscale | Runtime orchestration
+  ansible.builtin.import_tasks: runtime.yml

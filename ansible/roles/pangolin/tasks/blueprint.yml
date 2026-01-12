@@ -1,0 +1,51 @@
+---
+# Blueprint deployment
+
+- name: Deploy Headscale blueprint file
+  ansible.builtin.template:
+    src: blueprints/headscale.yml.j2
+    dest: "{{ pangolin_blueprint_dir }}/headscale.yml"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0644"
+  register: pangolin_blueprint_deployed
+
+- name: Read blueprint checksum file
+  ansible.builtin.slurp:
+    src: "{{ pangolin_blueprint_dir }}/.headscale.applied.sha256"
+  register: pangolin_applied_checksum_file
+  failed_when: false
+  changed_when: false
+
+- name: Calculate current blueprint checksum
+  ansible.builtin.stat:
+    path: "{{ pangolin_blueprint_dir }}/headscale.yml"
+    checksum_algorithm: sha256
+  register: pangolin_blueprint_stat
+
+- name: Apply blueprint via API if changed
+  ansible.builtin.uri:
+    url: "{{ pangolin_endpoint }}/api/v1/org/blueprint"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ pangolin_api_token }}"
+      Content-Type: "application/x-yaml"
+    src: "{{ pangolin_blueprint_dir }}/headscale.yml"
+    status_code: [200]
+  when:
+    - not ansible_check_mode
+    - >
+      pangolin_applied_checksum_file.content is not defined or
+      (pangolin_applied_checksum_file.content | b64decode | trim) != pangolin_blueprint_stat.stat.checksum
+  register: pangolin_blueprint_result
+
+- name: Save applied blueprint checksum
+  ansible.builtin.copy:
+    dest: "{{ pangolin_blueprint_dir }}/.headscale.applied.sha256"
+    content: "{{ pangolin_blueprint_stat.stat.checksum }}"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0600"
+  when:
+    - not ansible_check_mode
+    - pangolin_blueprint_result is changed

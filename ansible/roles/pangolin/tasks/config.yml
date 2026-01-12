@@ -1,0 +1,28 @@
+---
+
+- name: Render Pangolin main config
+  ansible.builtin.template:
+    src: config.yml.j2
+    dest: "{{ pangolin_cfg_path }}"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0640"
+  notify: Pangolin | Restart service
+
+- name: Render Traefik static config
+  ansible.builtin.template:
+    src: traefik_config.yml.j2
+    dest: "{{ pangolin_trfk_static_path }}"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0640"
+  notify: Pangolin | Restart Traefik
+
+- name: Render Traefik dynamic config
+  ansible.builtin.template:
+    src: pangolin.yml.j2
+    dest: "{{ pangolin_trfk_dynamic_path }}"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0640"
+  notify: Pangolin | Restart Traefik

@@ -1,0 +1,55 @@
+- name: Deploy core system
+  hosts: core
+  become: true
+  vars:
+    # Decrypt and parse SOPS file
+    sops_secrets: "{{ lookup('community.sops.sops', '../../secrets/common.sops.yaml') | from_yaml }}"
+  vars_files:
+    - group_vars/all.yml
+    - group_vars/paths.yml
+  pre_tasks:
+    - name: Flatten SOPS secrets for roles
+      ansible.builtin.set_fact:
+        # Already loaded in group_vars/all.yml
+        # project_domain, project_admin_email, project_user, project_group
+
+        # Cloud/host
+        host_name: "{{ sops_secrets[project_role].host_name }}"
+        host_ip: "{{ sops_secrets[project_role].host_ip }}"
+        ssh_user: "{{ sops_secrets[project_role].ssh_user }}"
+        ssh_key_path: "{{ sops_secrets[project_role].ssh_key_path }}"
+        host_user: "{{ sops_secrets[project_role].host_user }}"
+        
+        # Role secrets (optional)
+        pangolin_api_token: "{{ sops_secrets.pangolin.pangolin_api_token | default(omit) }}"
+        
+        # Headscale
+        headscale_api_key: "{{ sops_secrets.headscale.headscale_api_key | default(omit) }}"
+        headscale_preauth_key: "{{ sops_secrets.headscale.headscale_preauth_key | default(omit) }}"
+        # Tailscale
+        tailscale_authkey: "{{ sops_secrets.tailscale.authkey | default(omit) }}"
+        # Newt (if needed)
+        newt_api_token: "{{ sops_secrets.pangolin.newt_api_token | default(omit) }}"
+        newt_id: "{{ sops_secrets.pangolin.newt_id | default(omit) }}"
+      
+      no_log: true
+
+  roles:
+    - role: 40-maintenance
+      tags: maintenance
+    - role: 00-preflight
+      tags: preflight
+    - role: 10-packages
+      tags: packages
+    - role: 20-docker
+      tags: docker
+    - role: 30-base
+      tags: base
+    - role: headscale
+      tags: headscale
+    - role: tailscale
+      tags: tailscale
+    - role: pangolin
+      tags: pangolin
+    - role: newt
+      tags: newt

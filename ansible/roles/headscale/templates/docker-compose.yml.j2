@@ -1,0 +1,55 @@
+services:
+  #===================================================
+  # HEADSCALE SERVER - Main Control Service
+  #===================================================
+  headscale:
+    image: {{ headscale_image }}
+    container_name: headscale
+    hostname: {{ headscale_fqdn }}
+    restart: unless-stopped
+    command: serve
+
+    volumes:
+      - "./config:/etc/headscale"
+      - "./data:/var/lib/headscale"
+
+    env_file:
+      - .env
+
+    healthcheck:
+      test: ["CMD", "headscale", "version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+    networks:
+      {{ headscale_network }}:
+        external: true
+
+  #===================================================
+  # HEADSCALE ADMIN - Web UI for Management
+  #===================================================
+  headscale-admin:
+    image: {{ headscale_admin_image }}
+    container_name: headscale-admin
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      - HEADSCALE_URL={{ headscale_url }}
+      - HEADSCALE_API_KEY_FILE=/app/api_key
+
+    volumes:
+      - ./config/api_key.key:/app/api_key:ro
+
+    depends_on:
+      - headscale
+
+    networks:
+      - {{ headscale_network }}
+
+networks:
+  {{ headscale_network }}:
+    external: true

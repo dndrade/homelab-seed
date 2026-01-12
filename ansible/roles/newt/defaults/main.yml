@@ -1,0 +1,47 @@
+---
+# ==========================================
+#               Ownership
+# ==========================================
+
+newt_owner: "{{ project_user }}"
+newt_group: "{{ project_group }}"
+
+# ==========================================
+#         Paths (from group_vars)
+# ==========================================
+
+newt_root: "{{ project_services.newt.root }}"
+newt_compose_path: "{{ project_services.newt.compose }}"
+
+# ==========================================
+#               Image
+# ==========================================
+
+newt_image: "fosrl/newt:latest"
+
+# ==========================================
+#              Networking
+# ==========================================
+
+newt_network: "pangolin"
+newt_mtu: 1280
+newt_dns: "1.1.1.1"
+newt_ping_interval: "3s"
+newt_ping_timeout: "5s"
+newt_relay_port: 10024
+
+# ==========================================
+#            Performance
+# ==========================================
+
+newt_udp_receive_buffer_size: 4194304
+newt_max_udp_packet_size: 65507
+
+# ==========================================
+#            Monitoring
+# ==========================================
+
+newt_log_level: "DEBUG"
+newt_hostinfo_interval: 60
+newt_metrics_enabled: true
+newt_metrics_addr: "0.0.0.0:2112"

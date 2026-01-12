@@ -1,0 +1,14 @@
+---
+- name: Check Tailscale stateful path exists
+  ansible.builtin.stat:
+    path: "{{ tailscale_data_dir }}"
+  register: tailscale_data_stat
+
+- name: Abort if Tailscale data dir is missing
+  ansible.builtin.fail:
+    msg: >
+      Tailscale data directory {{ tailscale_data_dir }} does not exist.
+      Refusing to deploy to avoid data loss.
+  when:
+    - not tailscale_data_stat.stat.exists
+    - not tailscale_bootstrap | default(false)

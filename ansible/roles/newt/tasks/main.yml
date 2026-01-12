@@ -1,0 +1,63 @@
+---
+# ========================================================
+#                      Checks
+# ========================================================
+
+- name: Assert not running in check mode
+  ansible.builtin.assert:
+    that:
+      - not ansible_check_mode
+    fail_msg: "Newt role requires real execution (secrets + Docker)"
+  tags: never, newt-deploy  # Skip in check
+
+# ========================================================
+#                     Secrets
+# ========================================================
+
+- name: Load Newt environment secrets
+  ansible.builtin.import_tasks: env.yml
+
+# ========================================================
+#                      LAYOUT
+# ========================================================
+
+- name: Ensure Newt service directory exists
+  ansible.builtin.file:
+    path: "{{ newt_root }}"
+    state: directory
+    owner: "{{ project_user }}"
+    group: "{{ project_group }}"
+    mode: "0755"
+
+- name: Render Newt env file
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ newt_root }}/.env"
+    owner: "{{ project_user }}"
+    group: "{{ project_group }}"
+    mode: "0600"
+
+- name: Render Newt docker-compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ newt_compose_path }}"
+    owner: "{{ project_user }}"
+    group: "{{ project_group }}"
+    mode: "0644"
+  notify: Restart newt stack
+
+# ========================================================
+#                      STACK STATE
+# ========================================================
+
+- name: Get existing Docker container names
+  ansible.builtin.command:
+    cmd: docker ps -a --format '{{ "{{.Names}}" }}'
+  register: newt_docker_containers
+  changed_when: false
+
+- name: Bring up Newt stack if not running
+  ansible.builtin.command:
+    cmd: docker compose -f {{ newt_compose_path }} up -d
+  when: "'newt\n' not in (newt_docker_containers.stdout + '\n')"
+  changed_when: true

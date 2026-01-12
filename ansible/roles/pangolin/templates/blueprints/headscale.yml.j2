@@ -1,0 +1,111 @@
+public-resources:
+
+  #
+  # ===============================
+  # Headscale HTTP + gRPC
+  # ===============================
+  #
+  headscale-http:
+    name: Headscale Control Plane
+    protocol: http
+    full-domain: "Host(`headscale.{{ project_domain }}`)"
+
+    # --------
+    # Redirect: / -> /admin
+    # --------
+    rules:
+      - action: pass
+        match: path
+        value: /
+
+    targets:
+      #
+      # --------
+      # gRPC (h2c)
+      # --------
+      #
+      - hostname: headscale
+        port: 50443
+        method: h2c
+        path: /machine
+        path-match: prefix
+
+      - hostname: headscale
+        port: 50443
+        method: h2c
+        path: /headscale.v1.HeadscaleService
+        path-match: prefix
+
+      - hostname: headscale
+        port: 50443
+        method: h2c
+        path: /grpc.reflection
+        path-match: prefix
+
+      #
+      # --------
+      # HTTP endpoints
+      # --------
+      #
+      - hostname: headscale
+        port: 8080
+        method: http
+        path: /ts2021
+        path-match: prefix
+
+      - hostname: headscale
+        port: 8080
+        method: http
+        path: /key
+        path-match: prefix
+
+      - hostname: headscale
+        port: 8080
+        method: http
+        path: /register
+        path-match: prefix
+
+      - hostname: headscale
+        port: 8080
+        method: http
+        path: /api
+        path-match: prefix
+
+      - hostname: headscale
+        port: 8080
+        method: http
+        path: /api/v1/user
+        path-match: prefix
+
+      #
+      # --------
+      # Admin UI
+      # --------
+      #
+      - hostname: headscale-admin
+        port: 80
+        method: http
+        path: /admin
+        path-match: prefix
+
+
+  #
+  # ===============================
+  # DERP (UDP)
+  # ===============================
+  #
+  headscale-derp-3478:
+    name: Headscale DERP 3478
+    protocol: udp
+    proxy-port: 3478
+    targets:
+      - hostname: headscale
+        port: 3478
+
+  headscale-derp-41641:
+    name: Headscale DERP 41641
+    protocol: udp
+    proxy-port: 41641
+    targets:
+      - hostname: headscale
+        port: 41641

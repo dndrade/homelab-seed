@@ -1,0 +1,13 @@
+---
+# Pangolin secrets management
+
+- name: Validate Pangolin API token exists
+  ansible.builtin.assert:
+    that:
+      - pangolin_api_token is defined
+      - (pangolin_api_token | string | length) >= 32
+    fail_msg: >
+      Missing or too-short Pangolin API token. 
+      Ensure 'pangolin.pangolin_api_token' is defined in your SOPS file
+      and is at least 32 characters long.
+  no_log: true

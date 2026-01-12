@@ -1,0 +1,125 @@
+---
+#
+# Docker APT repository setup
+# =====================================================
+
+- name: Ensure Docker APT keyring directory exists
+  ansible.builtin.file:
+    path: "{{ docker_apt_keyring_dir }}"
+    state: directory
+    mode: "0755"
+  when:
+    - docker_add_repo
+    - not ansible_check_mode
+
+- name: Add Docker GPG key
+  ansible.builtin.get_url:
+    url: "{{ docker_apt_gpg_key_url }}"
+    dest: "{{ docker_apt_key_asc }}"
+    mode: "0644"
+  when:
+    - docker_add_repo
+    - not ansible_check_mode
+
+- name: Add Docker APT repository
+  ansible.builtin.apt_repository:
+    repo: >
+      deb [arch={{ docker_apt_arch }}
+      signed-by={{ docker_apt_key_asc }}]
+      {{ docker_repo_url }}/{{ docker_apt_ansible_distribution | lower }}
+      {{ ansible_distribution_release }}
+      {{ docker_apt_release_channel }}
+    state: present
+    filename: docker
+  when:
+    - docker_add_repo
+    - not ansible_check_mode
+
+
+#
+# Remove conflicting / obsolete packages
+# =====================================================
+
+- name: Remove obsolete Docker packages
+  ansible.builtin.apt:
+    name: "{{ docker_obsolete_packages }}"
+    state: absent
+    purge: true
+
+
+#
+# Install Docker engine and tooling
+# =====================================================
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name: "{{ docker_packages }}"
+    state: "{{ docker_packages_state }}"
+  register: docker_pkg_result
+
+
+#
+# Docker service management
+# =====================================================
+
+- name: Manage Docker service
+  ansible.builtin.service:
+    name: docker
+    state: "{{ docker_service_state }}"
+    enabled: "{{ docker_service_enabled }}"
+  when: docker_service_manage
+
+
+#
+# Docker group access
+# =====================================================
+
+- name: Add users to docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: true
+  loop: "{{ docker_users }}"
+
+
+#
+# Installation summary
+# =====================================================
+
+- name: Report Docker installation summary
+  ansible.builtin.debug:
+    msg: |
+      Docker packages changed: {{ docker_pkg_result.changed }}
+      Docker service state: {{ docker_service_state }}
+      Docker enabled: {{ docker_service_enabled }}
+
+
+#
+# Docker verification
+# =====================================================
+
+- name: Wait for Docker socket
+  ansible.builtin.wait_for:
+    path: /var/run/docker.sock
+    state: present
+    timeout: 60
+  when: not ansible_check_mode
+
+- name: Check Docker version
+  ansible.builtin.command: docker --version
+  register: docker_version
+  changed_when: false
+
+- name: Check Docker Compose version
+  ansible.builtin.command: docker compose version
+  register: docker_compose_version
+  changed_when: false
+  failed_when: false
+
+- name: Display Docker verification summary
+  ansible.builtin.debug:
+    msg:
+      - "{{ docker_version.stdout }}"
+      - >-
+        {{ docker_compose_version.stdout
+           | default('docker compose not available') }}

@@ -1,0 +1,127 @@
+# {{ ansible_managed }}
+
+# ---------------------------------------------
+#           Core server settings
+# ---------------------------------------------
+
+server_url: "{{ headscale_url }}"
+listen_addr: 0.0.0.0:8080
+metrics_listen_addr: 0.0.0.0:9090
+grpc_listen_addr: 0.0.0.0:50443
+grpc_allow_insecure: true
+
+# ---------------------------------------------
+#        Noise (Tailscale v2 protocol)
+# ---------------------------------------------
+
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+
+# ---------------------------------------------
+#               IP allocation
+# ---------------------------------------------
+
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
+  allocation: sequential
+
+# ---------------------------------------------
+#          DERP relay configuration
+# ---------------------------------------------
+
+derp:
+  server:
+    enabled: true
+    region_id: 999
+    region_code: "{{ headscale_derp_region_code }}"
+    region_name: "{{ headscale_derp_region_name }}"
+    stun_listen_addr: "0.0.0.0:3478"
+    verify_clients: true
+    private_key_path: /var/lib/headscale/derp_server_private.key
+    automatically_add_embedded_derp_region: true
+
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
+
+  auto_update_enabled: true
+  update_frequency: 24h
+
+# ---------------------------------------------
+#               Trusted proxies
+# ---------------------------------------------
+
+trusted_proxies:
+  - 127.0.0.0/8
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+
+# ---------------------------------------------
+#               Updates
+# ---------------------------------------------
+
+disable_check_updates: true
+ephemeral_node_inactivity_timeout: 30m
+
+
+# ---------------------------------------------
+#               Ddatabase
+# ---------------------------------------------
+
+database:
+  type: sqlite
+  debug: false
+
+  gorm:
+    prepare_stmt: true
+    parameterized_queries: true
+    skip_err_record_not_found: true
+    slow_threshold: 1000
+
+  sqlite:
+    path: /var/lib/headscale/db.sqlite
+    write_ahead_log: true
+    wal_autocheckpoint: 1000
+
+# ---------------------------------------------
+#                   DNS
+# ---------------------------------------------
+dns:
+  magic_dns: true
+  base_domain: "{{ project_domain }}"
+  override_local_dns: true
+  nameservers:
+    global:
+      - 1.1.1.1
+      - 1.0.0.1
+
+# ---------------------------------------------
+#                 Policy
+# ---------------------------------------------
+policy:
+  mode: file
+  path: /etc/headscale/acl.json
+
+
+# ---------------------------------------------
+#             Unix socket (CLI)
+# ---------------------------------------------
+unix_socket: /var/run/headscale/headscale.sock
+unix_socket_permission: "0770"
+
+# ---------------------------------------------
+#                  Logging
+# ---------------------------------------------
+log:
+  level: info
+  format: text
+
+# ---------------------------------------------
+#                  WebSocket
+# ---------------------------------------------
+websocket:
+  enabled: true
+
+
+randomize_client_port: false

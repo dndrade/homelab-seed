@@ -1,0 +1,99 @@
+# ==========================================
+#       Project identity (from SOPS)
+# ==========================================
+_sops_common: >-
+  {{ lookup(
+    'community.sops.sops',
+    playbook_dir ~ '/../../secrets/common.sops.yaml'
+  ) | from_yaml }}
+
+# Supports multiple roles (cloud, edge, local, etc.)
+project_role: "{{ _sops_common.keys() | select('match', '^(cloud|edge|local)$') | first }}"
+
+project_domain: "{{ _sops_common[project_role].project_domain }}"
+project_admin_email: "{{ _sops_common[project_role].project_admin_email }}"
+
+project_user: "{{ _sops_common[project_role].host_user }}"
+project_group: "{{ _sops_common[project_role].host_user }}"
+
+# ==========================================
+#         Ansible runtime defaults
+# ==========================================
+ansible_become_method: sudo
+ansible_python_interpreter: auto
+
+
+# ==========================================
+#      Project Infrastructure Skeleton
+# ==========================================
+# Single source of truth for all filesystem paths
+# Visible to ALL roles - do not redefine elsewhere
+
+
+#           Root structure
+# ==========================================
+project_root: "{{ '~/veilgate-infra' | expanduser }}"
+
+
+#       Top-level skeleton directories
+# ==========================================
+project_backup_dir: "{{ project_root }}/backup"
+project_scripts_dir: "{{ project_root }}/scripts"
+project_services_dir: "{{ project_root }}/services"
+
+
+#           Root compose file
+# ==========================================
+project_compose_file: "{{ project_root }}/docker-compose.yml"
+
+
+#           Service definitions
+# ==========================================
+project_services:
+  pangolin:
+    root: "{{ project_services_dir }}/pangolin"
+    config: "{{ project_services_dir }}/pangolin/config"
+    db: "{{ project_services_dir }}/pangolin/config/db"
+    key: "{{ project_services_dir }}/pangolin/config/key"
+    letsencrypt: "{{ project_services_dir }}/pangolin/config/letsencrypt"
+    logs: "{{ project_services_dir }}/pangolin/config/logs"
+    traefik: "{{ project_services_dir }}/pangolin/config/traefik"
+    traefik_dynamic: "{{ project_services_dir }}/pangolin/config/traefik/dynamic"
+    compose: "{{ project_services_dir }}/pangolin/docker-compose.yml"
+    blueprints: "{{ project_services_dir }}/pangolin/config"
+    
+  headscale:
+    root: "{{ project_services_dir }}/headscale"
+    config: "{{ project_services_dir }}/headscale/config"
+    data: "{{ project_services_dir }}/headscale/data"
+    compose: "{{ project_services_dir }}/headscale/docker-compose.yml"
+    
+  tailscale:
+    root: "{{ project_services_dir }}/tailscale"
+    data: "{{ project_services_dir }}/tailscale/data"
+    files: "{{ project_services_dir }}/tailscale/data/files"
+    compose: "{{ project_services_dir }}/tailscale/docker-compose.yml"
+    
+  newt:
+    root: "{{ project_services_dir }}/newt"
+    compose: "{{ project_services_dir }}/newt/docker-compose.yml"
+    
+  monitoring:
+    root: "{{ project_services_dir }}/monitoring"
+    compose: "{{ project_services_dir }}/monitoring/docker-compose.yml"
+
+
+#       Service names (for iteration)
+# ==========================================
+project_service_names: "{{ project_services.keys() | list }}"
+
+#               Stateful paths
+# ==========================================
+# These directories contain persistent data that might not need
+# to be recreated or overwritten during deployments
+project_stateful_paths:
+  - "{{ project_services.headscale.data }}"
+  - "{{ project_services.pangolin.config }}/db"
+  - "{{ project_services.pangolin.config }}/letsencrypt"
+  - "{{ project_services.pangolin.config }}/logs"
+  - "{{ project_services.tailscale.data }}"

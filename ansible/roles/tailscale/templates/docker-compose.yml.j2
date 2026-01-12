@@ -1,0 +1,27 @@
+services:
+  tailscale:
+    image: {{ tailscale_image }}
+    container_name: {{ tailscale_container_name }}
+    network_mode: host
+    restart: {{ tailscale_restart_policy }}
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    volumes:
+      - /dev/net/tun:/dev/net/tun
+      - ./data:/var/lib/tailscale
+      - /etc/machine-id:/etc/machine-id
+    env_file:
+      - ".env"
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      tailscaled --state=/var/lib/tailscale/tailscaled.state &
+      sleep 5
+      tailscale up --authkey=${TS_AUTHKEY} ${TS_EXTRA_ARGS}
+      wait -n
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.tailscale-status.rule: "Host(`{{ tailscale_fqdn }}`)"
+      traefik.http.routers.tailscale-status.entrypoints: "{{ tailscale_traefik_entrypoint }}"
+      traefik.http.routers.tailscale-status.tls: "{{ tailscale_traefik_tls }}"
+      traefik.http.services.tailscale-status.loadbalancer.server.port: "{{ tailscale_status_port }}"

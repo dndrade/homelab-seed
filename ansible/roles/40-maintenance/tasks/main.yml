@@ -1,0 +1,69 @@
+---
+# ========================================================
+#     Apt cache refresh
+# Purpose: ensures package metadata is up to date
+# ========================================================
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ maintenance_apt_cache_valid_time }}"
+
+
+# ========================================================
+#   Upgrade inspection (visibility & logging)
+# Purpose: shows dev what WILL change
+# ========================================================
+
+- name: Check for upgradable packages (count)
+  ansible.builtin.shell: |
+    set -o pipefail
+    apt list --upgradable 2>/dev/null | grep -c upgradable || echo "0"
+  args:
+    executable: /bin/bash
+  register: maintenance_upgradable_count
+  changed_when: false
+
+- name: Check for upgradable packages (list)
+  ansible.builtin.shell: |
+    set -o pipefail
+    apt list --upgradable 2>/dev/null | tail -n +2
+  args:
+    executable: /bin/bash
+  register: maintenance_upgradable_list
+  changed_when: false
+
+- name: Display upgradable package summary
+  ansible.builtin.debug:
+    msg: |
+      {{ maintenance_upgradable_list.stdout_lines | length }}
+      packages available for upgrade:
+      {{ maintenance_upgradable_list.stdout_lines | join('\n') }}
+  when:
+    - maintenance_verbose
+    - maintenance_upgradable_list.stdout_lines | length > 0
+
+
+# ========================================================
+#     System upgrade execution
+#
+# ========================================================
+
+- name: Upgrade installed packages (safe)
+  ansible.builtin.apt:
+    upgrade: true
+    dpkg_options: "force-confold,force-confdef"
+  when:
+    - maintenance_upgrade
+    - not maintenance_dist_upgrade
+  register: maintenance_upgrade_result
+  notify: Reboot if required
+
+- name: Dist-upgrade installed packages
+  ansible.builtin.apt:
+    upgrade: dist
+    dpkg_options: "force-confold,force-confdef"
+  when:
+    - maintenance_upgrade
+    - maintenance_dist_upgrade
+  register: maintenance_upgrade_result
+  notify: Reboot if required

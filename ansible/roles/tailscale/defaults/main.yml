@@ -1,0 +1,40 @@
+---
+# ==========================================
+#                 Domain
+# ==========================================
+
+tailscale_fqdn: "tailscale.{{ project_domain }}"
+tailscale_url: "https://{{ tailscale_fqdn }}"
+
+# ==========================================
+#                 Paths
+# ==========================================
+
+tailscale_owner: "{{ project_user }}"
+tailscale_group: "{{ project_group }}"
+
+tailscale_root: "{{ project_services.tailscale.root }}"
+tailscale_data_dir: "{{ project_services.tailscale.data }}"
+tailscale_compose_path: "{{ project_services.tailscale.compose }}"
+
+# ==========================================
+#         Deployment Control
+# ==========================================
+
+tailscale_bootstrap: false
+
+# ==========================================
+#            Container Spec
+# ==========================================
+
+tailscale_image: tailscale/tailscale:latest
+tailscale_container_name: tailscale
+tailscale_restart_policy: unless-stopped
+
+# ==========================================
+#            Traefik Labels
+# ==========================================
+
+tailscale_traefik_entrypoint: websecure
+tailscale_traefik_tls: "true"
+tailscale_status_port: 8080

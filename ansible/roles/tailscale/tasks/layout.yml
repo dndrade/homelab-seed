@@ -1,0 +1,19 @@
+---
+# Stateless dirs
+- name: Ensure Tailscale root exists
+  ansible.builtin.file:
+    path: "{{ tailscale_root }}"
+    state: directory
+    owner: "{{ project_user }}"
+    group: "{{ project_group }}"
+    mode: "0755"
+
+# Stateful dir (bootstrap only)
+- name: Create Tailscale data dir (bootstrap only)
+  ansible.builtin.file:
+    path: "{{ tailscale_data_dir }}"
+    state: directory
+    owner: "{{ project_user }}"
+    group: "{{ project_group }}"
+    mode: "0755"
+  when: tailscale_bootstrap | default(false)

@@ -1,0 +1,51 @@
+# ==========================================
+#              Identity
+# ==========================================
+
+headscale_owner: "{{ project_user }}"
+headscale_group: "{{ project_group }}"
+
+# DERP identity
+headscale_derp_region_code: "project-derp"
+headscale_derp_region_name: "Project DERP"
+
+
+# ==========================================
+#              Domain
+# ==========================================
+
+headscale_fqdn: "headscale.{{ project_domain }}"
+headscale_url: "https://{{ headscale_fqdn }}"
+
+# ==========================================
+#              Paths
+# ==========================================
+headscale_bootstrap: false
+
+headscale_root: "{{ project_services.headscale.root }}"
+headscale_config_dir: "{{ project_services.headscale.config }}"
+headscale_data_dir: "{{ project_services.headscale.data }}"
+headscale_compose_path: "{{ project_services.headscale.compose }}"
+
+# File paths (role-specific)
+headscale_cfg_path: "{{ headscale_config_dir }}/config.yml"
+headscale_acl_path: "{{ headscale_config_dir }}/acl.json"
+headscale_api_key_file: "{{ headscale_config_dir }}/api_key.key"
+headscale_env_path: "{{ headscale_root }}/.env"
+
+# ==========================================
+#              Images
+# ==========================================
+
+headscale_image_latest: headscale/headscale:latest
+headscale_image_pinned: headscale/headscale:0.27.1
+
+headscale_image: "{{ headscale_image_pinned }}"
+
+headscale_admin_image: goodieshq/headscale-admin:0.25.6
+
+# ==========================================
+#              Runtime
+# ==========================================
+
+headscale_network: pangolin

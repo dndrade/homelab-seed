@@ -1,0 +1,86 @@
+# version: '3'
+
+# vars:
+#   ANSIBLE_CONFIG: ansible/ansible.cfg
+#   INVENTORY: ansible/inventories/hosts.yml
+#   PLAYBOOK: ansible/playbooks/deploy_core.yml
+#   PING: ansible/playbooks/ping.yml
+
+# tasks:
+#   ping:
+#     cmds:
+#       - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} {{.PING}}
+
+#   deploy:
+#     cmds:
+#       - echo "📦 Ansible deploy"
+#       - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} {{.PLAYBOOK}}
+
+#   check:
+#     cmds:
+#       - echo "🔍 Ansible check (dry-run)"
+#       - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --check --diff {{.PLAYBOOK}}
+
+version: '3'
+
+vars:
+  ANSIBLE_CONFIG: ansible/ansible.cfg
+  INVENTORY: ansible/inventories/hosts.yml
+  PLAYBOOK: ansible/playbooks/deploy_core.yml
+  PING: ansible/playbooks/ping.yml
+
+tasks:
+  ping:
+    desc: Test host connectivity
+    cmds:
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} {{.PING}}
+
+  deploy:
+    desc: Full Ansible deploy
+    cmds:
+      - echo "📦 Ansible deploy"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} {{.PLAYBOOK}}
+
+  check:
+    desc: Full dry-run check
+    cmds:
+      - echo "🔍 Ansible check (dry-run)"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --check --diff {{.PLAYBOOK}}
+
+  # Role-specific dry-runs (direct, no internals)
+  check:headscale:
+    desc: Headscale dry-run only
+    cmds:
+      - echo "🔍 Headscale check (dry-run)"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags headscale --check --diff {{.PLAYBOOK}}
+
+  check:tailscale:
+    desc: Tailscale dry-run only
+    cmds:
+      - echo "🔍 Tailscale check (dry-run)"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags tailscale --check --diff {{.PLAYBOOK}}
+
+  check:pangolin:
+    desc: Pangolin dry-run only
+    cmds:
+      - echo "🔍 Pangolin check (dry-run)"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags pangolin --check --diff {{.PLAYBOOK}}
+
+  check:newt:
+    desc: Newt dry-run only
+    cmds:
+      - echo "🔍 Newt check (dry-run)"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags newt --check --diff {{.PLAYBOOK}}
+
+  check:services:
+    desc: Services dry-run (headscale/tailscale/pangolin/newt)
+    cmds:
+      - echo "🔍 Services check (dry-run)"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags "headscale,tailscale,pangolin,newt" --check --diff {{.PLAYBOOK}}
+
+  # Single role deploys
+  deploy:tailscale:
+    desc: Deploy Tailscale only
+    cmds:
+      - echo "🚀 Deploying Tailscale"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags tailscale {{.PLAYBOOK}}

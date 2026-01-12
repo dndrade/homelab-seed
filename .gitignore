@@ -1,0 +1,92 @@
+# ─── General ────────────────────────────────────────
+.DS_Store
+*.swp
+*.swo
+*.log
+*.bak
+*.tmp
+*~
+*#
+.#*
+
+# ─── Environment / Secrets ─────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+.envrc
+*.agekey
+
+# ─── Ansible ───────────────────────────────────────
+*.retry
+.ansible/
+.ansible-lint
+
+# roles/*/files/**
+# roles/*/templates/**
+
+# ─── Terraform ─────────────────────────────────────
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfplan
+.crash/
+
+# Generated Terraform outputs
+terraform/**/generated/
+terraform/output.json
+
+# vars
+terraform.tfvars
+terraform.tfvars.json
+override.tf
+override.tf.json
+
+# Terragrunt
+.terragrunt-cache/
+
+# ─── Python / Tooling ──────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+.checkpoints/
+.pytest_cache/
+
+# ─── Editors / IDEs ────────────────────────────────
+.vscode/
+.idea/
+
+# ─── Logs ──────────────────────────────────────────
+logs/
+*.out
+*.err
+
+# ─── Databases  ───────────────────────────────────
+Thumbs.db
+ehthumbs.db
+data/
+db/
+postgres/
+mysql/
+redis/
+volumes/
+
+# ─── Specific Sensitive Paths ──────────────────────
+secrets/*.yaml
+!secrets/*.sops.yaml
+secrets/*.yml
+!secrets/*.sops.yml
+
+# Ansible vault files
+ansible/**/*vault*.yml
+ansible/**/*secret*.yml
+
+# Generated inventories
+ansible/inventories/hosts.yml
+ansible/inventories/generated/
+
+# SOPS decrypted artifacts
+*.dec.yaml
+*.dec.yml.github/
+scripts/

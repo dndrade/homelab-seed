@@ -1,0 +1,19 @@
+---
+# Pangolin filesystem layout
+
+- name: Ensure Pangolin directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0755"
+  loop:
+    - "{{ pangolin_root }}"
+    - "{{ pangolin_config_dir }}"
+    - "{{ pangolin_traefik_dir }}"
+    - "{{ pangolin_trfk_dynamic_dir }}"
+    - "{{ pangolin_blueprint_dir }}"
+    - "{{ pangolin_letsencrypt_dir }}"
+    - "{{ pangolin_db_dir }}"
+    - "{{ pangolin_logs_dir }}"

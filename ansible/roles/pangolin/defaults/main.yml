@@ -1,0 +1,58 @@
+---
+# ==========================================
+#             Ownership
+# ==========================================
+
+pangolin_owner: "{{ project_user }}"
+pangolin_group: "{{ project_group }}"
+
+# ==========================================
+#          Domain / Identity
+# ==========================================
+
+pangolin_fqdn: "pangolin.{{ project_domain }}"
+pangolin_dashboard_url: "https://{{ pangolin_fqdn }}"
+pangolin_letsencrypt_email: "{{ project_admin_email }}"
+pangolin_log_level: "info"
+
+# ==========================================
+#      Paths (from group_vars)
+# ==========================================
+
+pangolin_bootstrap: false
+
+pangolin_root: "{{ project_services.pangolin.root }}"
+pangolin_config_dir: "{{ project_services.pangolin.config }}"
+pangolin_traefik_dir: "{{ project_services.pangolin.traefik }}"
+pangolin_trfk_dynamic_dir: "{{ project_services.pangolin.traefik_dynamic }}"
+pangolin_letsencrypt_dir: "{{ project_services.pangolin.letsencrypt }}"
+pangolin_db_dir: "{{ project_services.pangolin.db }}"
+pangolin_logs_dir: "{{ project_services.pangolin.logs }}"
+pangolin_blueprint_dir: "{{ project_services.pangolin.blueprints }}"
+pangolin_compose_path: "{{ project_services.pangolin.compose }}"
+
+# File paths (role-specific)
+pangolin_key_path: "{{ pangolin_config_dir }}/key"
+pangolin_cfg_path: "{{ pangolin_config_dir }}/config.yml"
+pangolin_trfk_static_path: "{{ pangolin_traefik_dir }}/traefik_config.yml"
+pangolin_trfk_dynamic_path: "{{ pangolin_trfk_dynamic_dir }}/pangolin.yml"
+pangolin_acme_path: "{{ pangolin_letsencrypt_dir }}/acme.json"
+
+# ==========================================
+#        Images / Networking
+# ==========================================
+
+pangolin_image: "fosrl/pangolin:1.14.1"
+gerbil_image: "fosrl/gerbil:latest"       # noqa: var-naming[no-role-prefix]
+traefik_image: "traefik:v3.6.0"           # noqa: var-naming[no-role-prefix]
+pangolin_docker_network: "pangolin"
+
+# ==========================================
+#         API / Blueprint
+# ==========================================
+
+pangolin_endpoint: "{{ pangolin_dashboard_url }}"
+
+# API authentication (load from environment or vault)
+# Required for blueprint deployment
+# Set via: export PANGOLIN_API_TOKEN="your-token"

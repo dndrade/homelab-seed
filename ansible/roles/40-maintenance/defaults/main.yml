@@ -1,0 +1,12 @@
+---
+
+# If false, no upgrades of any kind are performed
+maintenance_upgrade: true
+
+# If true, overrides safe upgrade and performs dist-upgrade
+maintenance_dist_upgrade: false
+
+
+maintenance_allow_reboot: false
+maintenance_apt_cache_valid_time: 3600
+maintenance_verbose: true

@@ -1,0 +1,56 @@
+# ~/veilgate-infra/services/pangolin/config/config.yml
+
+# App settings
+app:
+  dashboard_url: "{{ pangolin_dashboard_url }}"
+  log_level: "{{ pangolin_log_level }}"
+
+# Server settings
+server:
+  hostname: "{{ pangolin_fqdn }}"
+  port: 3001
+  api:
+    enabled: true
+    base_path: "/api/v1"
+  secret: "${PANGOLIN_SECRET}"
+  cors:
+    origins:
+      - "{{ pangolin_dashboard_url }}"
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+    allowed_headers:
+      - "Content-Type"
+      - "X-CSRF-Token"
+    credentials: false
+  trust_proxy: 1
+  dashboard_session_length_hours: 720
+  resource_session_length_hours: 720
+
+# Domain configuration
+domains:
+  main:
+    base_domain: "{{ project_domain }}"
+    cert_resolver: "letsencrypt"
+    scheme: "https"
+
+
+# Traefik provider settings
+traefik:
+  provider:
+    http:
+      enabled: true
+
+# Gerbil configuration
+gerbil:
+  base_endpoint: "{{ project_domain }}"
+  start_port: 51820
+  block_size: 24
+  site_block_size: 30
+  subnet_group: 100.89.137.0/20
+
+# Feature flags
+flags:
+  require_email_verification: false
+  disable_signup_without_invite: true
+  disable_user_create_org: false
+  allow_raw_resources: true
+  allow_base_domain_resources: true

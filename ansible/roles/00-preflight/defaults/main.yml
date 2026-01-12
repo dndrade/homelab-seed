@@ -1,0 +1,7 @@
+---
+
+preflight_min_kernel: "5.15"
+preflight_allowed_os:
+  - Ubuntu
+  - Debian
+preflight_required_arch: "x86_64"

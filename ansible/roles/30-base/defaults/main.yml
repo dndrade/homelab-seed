@@ -1,0 +1,7 @@
+---
+# ==========================================
+#           Identity (Base Role)
+# ==========================================
+
+base_user: "{{ project_user }}"
+base_group: "{{ project_group }}"

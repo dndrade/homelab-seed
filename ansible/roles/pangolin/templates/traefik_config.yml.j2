@@ -1,0 +1,88 @@
+# ~/../pangolin/config/traefik/traefik_config.yml
+# ============================
+#
+# Traefik Static Configuration
+# (Runs inside Gerbil's namespace)
+#
+# ============================
+
+# --- API & Dashboard ---
+api:
+  insecure: true        # Dashboard/API exposed (for dev, secure behind Pangolin in prod)
+  dashboard: true
+
+# --- Providers --- (where Traefik reads config from)
+providers:
+  # Get dynamic config from Pangolin API
+  http:
+    endpoint: "http://pangolin:3001/api/v1/traefik-config"
+    pollInterval: "5s"
+  # Add file provider to load static configuration files
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
+  # Auto-discover Docker containers
+  docker:
+    exposedByDefault: false
+    network: pangolin
+
+# --- Logging ---
+log:
+  level: "INFO"          # Options: DEBUG, INFO, WARN, ERROR
+  format: "common"
+
+# --- Certificates ---
+certificatesResolvers:
+  letsencrypt:
+    # ACME (Let's Encrypt Certificates)
+    acme:
+      email: "{{ project_admin_email }}"
+      storage: "/letsencrypt/acme.json"
+      caServer: "https://acme-v02.api.letsencrypt.org/directory"
+      dnsChallenge:
+        provider: cloudflare
+      # httpChallenge:
+      #  entryPoint: web   # Solve challenges on :80
+
+
+# ----------------------------
+# Experimental plugins
+# ----------------------------
+experimental:
+  plugins:
+    badger:
+      moduleName: "github.com/fosrl/badger"
+      version: "v1.2.0"
+
+# ----------------------------
+# Entrypoints (bound via Gerbil - traefik listens on these ports)
+# ----------------------------
+ping:
+  entryPoint: traefik
+
+entryPoints:
+  # Port 80 → Gerbil forwards to Traefik for HTTP
+  web:
+    address: ":80"
+
+  # Port 443 → Gerbil forwards to Traefik for HTTPS
+  websecure:
+    address: ":443"
+    transport:
+      respondingTimeouts:
+        readTimeout: "30m"   # long-lived requests allowed
+    http:
+      tls:
+        certResolver: "letsencrypt"
+
+  # Port 3478/udp → used by Headscale DERP/STUN-like traffic
+  derp-3478:
+    address: ":3478/udp"
+
+  # Port 41641/udp → used by Headscale DERP relay channel
+  derp-41641:
+    address: ":41641/udp"
+
+# --- Transport Options ---
+serversTransport:
+  insecureSkipVerify: true  # Allow self-signed certs from backend containers
