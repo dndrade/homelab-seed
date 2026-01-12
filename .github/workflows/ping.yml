@@ -1,0 +1,77 @@
+name: Ping veilgate-cloud
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      # -------------------------------
+      # Checkout
+      # -------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -------------------------------
+      #             SOPS
+      # -------------------------------
+      - name: Setup SOPS age key
+        run: |
+          mkdir -p ~/.config/sops/age
+          echo "${{ secrets.SOPS_AGE_KEY }}" > ~/.config/sops/age/keys.txt
+          chmod 600 ~/.config/sops/age/keys.txt
+
+      # -------------------------------
+      #           Tooling
+      # -------------------------------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Ansible
+        run: |
+          pip install ansible ansible-lint
+          ansible-galaxy collection install community.sops
+
+      # -------------------------------
+      #           SSH
+      # -------------------------------
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.HOST_IP }} >> ~/.ssh/known_hosts
+
+      # -------------------------------
+      #         Terraform - invt
+      # -------------------------------
+      - name: Terraform init
+        working-directory: terraform/environments/core/veilgate-cloud
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        working-directory: terraform/environments/core/veilgate-cloud
+        run: terraform validate
+
+      - name: Terraform apply (inventory only)
+        working-directory: terraform/environments/core/veilgate-cloud
+        run: terraform apply -auto-approve -lock=false
+
+      # -------------------------------
+      #       Ansible — ping
+      # -------------------------------
+      - name: Ansible ping
+        env:
+          ANSIBLE_CONFIG: ansible/ansible.cfg
+        run: |
+          ansible \
+            -i terraform/environments/core/veilgate-cloud/generated/inventory.yml \
+            core \
+            -m ping
