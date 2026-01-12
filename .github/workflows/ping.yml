@@ -47,7 +47,6 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_veilgate_ansible
           chmod 600 ~/.ssh/id_veilgate_ansible
-          ssh-keyscan -H ${{ secrets.HOST_IP }} >> ~/.ssh/known_hosts
 
       # -------------------------------
       #         Terraform - invt
