@@ -62,7 +62,12 @@ jobs:
 
       - name: Terraform apply (inventory only)
         working-directory: terraform/environments/core/veilgate-cloud
-        run: terraform apply -auto-approve -lock=false
+        run: |
+          terraform apply \
+            -auto-approve \
+            -lock=false \
+            -target=module.inventory_export
+
 
       # -------------------------------
       #       Ansible — ping
