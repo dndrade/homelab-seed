@@ -70,14 +70,16 @@ jobs:
             -lock=false \
             -target=module.inventory_export
 
+      - run: cat ansible/inventories/hosts.yml
+
       # -------------------------------
-      #       Ansible — ping
+      # Ansible — ping
       # -------------------------------
       - name: Ansible ping
         env:
           ANSIBLE_CONFIG: ansible/ansible.cfg
         run: |
           ansible \
-            -i terraform/environments/core/veilgate-cloud/generated/inventory.yml \
+            -i ansible/inventories/hosts.yml \
             core \
             -m ping
