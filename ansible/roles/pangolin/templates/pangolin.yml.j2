@@ -81,6 +81,16 @@ http:
       tls:
         certResolver: letsencrypt
 
+    # Traefik Dashboard
+    traefik-dashboard:
+      rule: "Host(`traefik.veilgate.com`)"
+      entryPoints:
+        - websecure
+      service: api@internal
+      middlewares: []
+      tls:
+        certResolver: letsencrypt
+
   services:
     next-service:
       loadBalancer:

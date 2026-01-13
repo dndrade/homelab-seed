@@ -1,29 +1,53 @@
----
-# Pangolin role handlers
+# ==========================================
+#         Pangolin role handlers
+# ==========================================
 
-- name: Pangolin | Restart service
+# -------- Pangolin --------
+
+- name: Pangolin | Restart Pangolin
   community.docker.docker_compose_v2:
     project_src: "{{ pangolin_root }}"
-    services:
-      - pangolin
-    state: present
-    restarted: true
+    services: [pangolin]
+    state: restarted
   when: not ansible_check_mode
+
+- name: Pangolin | Recreate Pangolin
+  community.docker.docker_compose_v2:
+    project_src: "{{ pangolin_root }}"
+    services: [pangolin]
+    recreate: true
+  when: not ansible_check_mode
+
+
+# -------- Traefik --------
 
 - name: Pangolin | Restart Traefik
   community.docker.docker_compose_v2:
     project_src: "{{ pangolin_root }}"
-    services:
-      - traefik
-    state: present
-    restarted: true
+    services: [traefik]
+    state: restarted
   when: not ansible_check_mode
 
-- name: Pangolin | CrowdSec Restart
+- name: Pangolin | Recreate Traefik
   community.docker.docker_compose_v2:
     project_src: "{{ pangolin_root }}"
-    services:
-      - crowdsec
-    state: present
-    restarted: true
+    services: [traefik]
+    recreate: true
+  when: not ansible_check_mode
+
+
+# -------- CrowdSec --------
+
+- name: Pangolin | Restart CrowdSec
+  community.docker.docker_compose_v2:
+    project_src: "{{ pangolin_root }}"
+    services: [crowdsec]
+    state: restarted
+  when: not ansible_check_mode
+
+- name: Pangolin | Recreate CrowdSec
+  community.docker.docker_compose_v2:
+    project_src: "{{ pangolin_root }}"
+    services: [crowdsec]
+    recreate: true
   when: not ansible_check_mode

@@ -15,8 +15,9 @@
     group: "{{ pangolin_group }}"
     mode: "0644"
   notify:
-    - Pangolin | Restart service
-    - Pangolin | Restart Traefik
+    - Pangolin | Recreate Pangolin
+    - Pangolin | Recreate Traefik
+    - Pangolin | Recreate CrowdSec
 
 
 # ------------------------------------------
@@ -29,6 +30,8 @@
     owner: "{{ pangolin_owner }}"
     group: "{{ pangolin_group }}"
     mode: "0644"
+  notify: Pangolin | Restart CrowdSec
+
 
 - name: Install CrowdSec Traefik acquisition config
   ansible.builtin.template:
@@ -37,6 +40,7 @@
     owner: "{{ pangolin_owner }}"
     group: "{{ pangolin_group }}"
     mode: "0644"
+  notify: Pangolin | Restart CrowdSec
 
 
 # ------------------------------------------
@@ -63,6 +67,10 @@
 
     - key: "CROWDSEC_BOUNCER_KEY"
       value: "{{ crowdsec_bouncer_key | default('') }}"
+  notify:
+    - Pangolin | Recreate Pangolin
+    - Pangolin | Recreate Traefik
+    - Pangolin | Recreate CrowdSec
   no_log: true
 
 

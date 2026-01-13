@@ -11,6 +11,9 @@
       CrowdSec bouncer key is missing.
       Traefik dynamic configuration cannot be rendered.
   no_log: true
+  when:
+    - not ansible_check_mode
+    - not crowdsec_needs_bouncer
 
 - name: Traefik | Render dynamic config (CrowdSec middleware)
   ansible.builtin.template:
