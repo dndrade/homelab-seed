@@ -1,5 +1,8 @@
 ---
 
+# ==========================================
+#       Config | Pangolin - Traefik
+# ==========================================
 - name: Render Pangolin main config
   ansible.builtin.template:
     src: config.yml.j2

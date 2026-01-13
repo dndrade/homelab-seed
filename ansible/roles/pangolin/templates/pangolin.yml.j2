@@ -1,16 +1,45 @@
+# yaml-language-server: $schema=none
 http:
   middlewares:
     redirect-to-https:
       redirectScheme:
         scheme: https
 
-    crowdsec:
-      plugin:
-        crowdsec:
-          crowdsecLapiKey: "${CROWDSEC_BOUNCER_KEY}"
-          crowdsecLapiHost: "http://crowdsec:8080"
-          banHTMLFilePath: "/etc/traefik/ban.html"
-          captchaHTMLFilePath: "/etc/traefik/captcha.html"
+    # crowdsec:
+    #   plugin:
+    #     crowdsec:
+    #       # Enable the bouncer
+    #       enabled: true
+          
+    #       # LAPI Connection Settings
+    #       crowdsecLapiKey: "{{ crowdsec_bouncer_key | default('') }}"
+    #       crowdsecLapiHost: "crowdsec:8080"  # host:port only (no scheme!)
+    #       crowdsecLapiScheme: "http"
+          
+    #       # Operating mode: 'live' (query per request) or 'stream' (cache decisions)
+    #       crowdsecMode: "live"
+          
+    #       # Custom ban/captcha pages
+    #       banHTMLFilePath: "/etc/traefik/ban.html"
+    #       captchaHTMLFilePath: "/etc/traefik/captcha.html"
+          
+    #       # AppSec/WAF Settings (optional - enable if using appsec collections)
+    #       crowdsecAppsecEnabled: false
+    #       crowdsecAppsecHost: "crowdsec:7422"
+    #       crowdsecAppsecFailureBlock: true
+    #       crowdsecAppsecUnreachableBlock: true
+          
+    #       # Trust internal IPs for X-Forwarded-For headers
+    #       forwardedHeadersTrustedIPs:
+    #         - "10.0.0.0/8"
+    #         - "172.16.0.0/12"
+    #         - "192.168.0.0/16"
+          
+    #       # Trusted client IPs (bypass bouncer checks)
+    #       clientTrustedIPs:
+    #         - "10.0.0.0/8"
+    #         - "172.16.0.0/12"
+    #         - "192.168.0.0/16"
 
   routers:
     # HTTP to HTTPS redirect router
@@ -28,8 +57,7 @@ http:
       service: next-service
       entryPoints:
         - websecure
-      middlewares:
-        - crowdsec  
+      middlewares: []
       tls:
         certResolver: letsencrypt
 
@@ -39,8 +67,7 @@ http:
       service: api-service
       entryPoints:
         - websecure
-      middlewares:
-        - crowdsec
+      middlewares: []
       tls:
         certResolver: letsencrypt
 
@@ -50,8 +77,7 @@ http:
       service: api-service
       entryPoints:
         - websecure
-      middlewares:
-        - crowdsec
+      middlewares: []
       tls:
         certResolver: letsencrypt
 

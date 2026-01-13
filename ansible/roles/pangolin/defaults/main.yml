@@ -1,26 +1,38 @@
 ---
 # ==========================================
-#             Ownership
+# Bootstrap & safety controls
 # ==========================================
 
+# Set to true ONLY for first-time deployment.
+#
+# This explicitly allows irreversible or stateful bootstrap actions,
+# such as:
+# - Generating a CrowdSec Traefik bouncer key
+#
+# MUST remain false for normal re-runs and upgrades.
+#
+pangolin_bootstrap: false
+
+
+# ==========================================
+#             Ownership
+# ==========================================
 pangolin_owner: "{{ project_user }}"
 pangolin_group: "{{ project_group }}"
+
 
 # ==========================================
 #          Domain / Identity
 # ==========================================
-
 pangolin_fqdn: "pangolin.{{ project_domain }}"
 pangolin_dashboard_url: "https://{{ pangolin_fqdn }}"
 pangolin_letsencrypt_email: "{{ project_admin_email }}"
 pangolin_log_level: "info"
 
+
 # ==========================================
 #      Paths (from group_vars)
 # ==========================================
-
-pangolin_bootstrap: false
-
 pangolin_root: "{{ project_services.pangolin.root }}"
 pangolin_config_dir: "{{ project_services.pangolin.config }}"
 pangolin_traefik_dir: "{{ project_services.pangolin.traefik }}"

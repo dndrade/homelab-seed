@@ -11,3 +11,22 @@
       Ensure 'pangolin.pangolin_api_token' is defined in your SOPS file
       and is at least 32 characters long.
   no_log: true
+
+- name: Validate CrowdSec enroll key exists
+  ansible.builtin.assert:
+    that:
+      - crowdsec_enroll_key is defined
+      - (crowdsec_enroll_key | string | length) >= 25
+    fail_msg: >
+      Missing 'crowdsec.enroll_key'.
+      Add it to your SOPS encrypted secrets file, then re-run.
+      Get the enrollment key from https://app.crowdsec.net
+  no_log: true
+
+- name: Validate CrowdSec bouncer key is defined (can be empty initially)
+  ansible.builtin.assert:
+    that:
+      - crowdsec_bouncer_key is defined
+    fail_msg: >
+      'crowdsec_bouncer_key' must be defined in SOPS (can be empty string for initial deploy).
+  no_log: true

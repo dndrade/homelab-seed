@@ -1,0 +1,22 @@
+---
+# ==========================================
+# Runtime | Traefik enforcement wiring
+# ==========================================
+
+- name: Traefik | Assert CrowdSec bouncer key is available
+  ansible.builtin.assert:
+    that:
+      - crowdsec_bouncer_key | default('') | length > 0
+    fail_msg: >
+      CrowdSec bouncer key is missing.
+      Traefik dynamic configuration cannot be rendered.
+  no_log: true
+
+- name: Traefik | Render dynamic config (CrowdSec middleware)
+  ansible.builtin.template:
+    src: pangolin.yml.j2
+    dest: "{{ pangolin_trfk_dynamic_path }}"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0640"
+  notify: Pangolin | Restart Traefik

@@ -17,3 +17,6 @@
     - "{{ pangolin_letsencrypt_dir }}"
     - "{{ pangolin_db_dir }}"
     - "{{ pangolin_logs_dir }}"
+    - "{{ pangolin_root }}/config/crowdsec"
+    - "{{ pangolin_root }}/config/crowdsec/acquis.d"
+    - "{{ pangolin_root }}/config/crowdsec/db"

@@ -1,0 +1,357 @@
+---
+# ==========================================
+# Runtime | CrowdSec orchestration
+# ==========================================
+#   Wait for LAPI
+#     ↓
+#   List bouncers
+#     ↓
+#   Compute bouncer state
+#     ↓
+#   Decide bootstrap
+#     ↓
+#   IF bootstrap:
+#      generate key
+#      pause (interactive)
+#      end_play
+#     ↓
+#   IF not bootstrap AND LAPI bad:
+#      diagnostics
+#      fail
+#
+
+# ------------------------------------------
+# CrowdSec | Wait for LAPI readiness
+# ------------------------------------------
+- name: CrowdSec | Wait for Local API to be ready
+  ansible.builtin.command: docker exec crowdsec cscli lapi status
+  register: crowdsec_lapi_status
+  retries: 20
+  delay: 5
+  until: crowdsec_lapi_status.rc == 0
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+
+# ------------------------------------------
+# CrowdSec | List existing bouncers
+# ------------------------------------------
+- name: CrowdSec | List existing bouncers
+  ansible.builtin.command: docker exec crowdsec cscli bouncers list -o json
+  register: crowdsec_bouncers_raw
+  changed_when: false
+  failed_when: false
+
+
+# ------------------------------------------
+# CrowdSec | Compute bouncer state
+# ------------------------------------------
+- name: CrowdSec | Set parsed bouncer list
+  ansible.builtin.set_fact:
+    crowdsec_bouncers: >-
+      {{
+        (crowdsec_bouncers_raw.stdout | default('[]') | trim | length > 0)
+        | ternary(crowdsec_bouncers_raw.stdout, '[]')
+        | from_json
+      }}
+
+
+- name: CrowdSec | Detect Traefik bouncer existence
+  ansible.builtin.set_fact:
+    crowdsec_traefik_bouncer_exists: >-
+      {{
+        (crowdsec_bouncers
+          | selectattr('name', 'equalto', 'traefik-bouncer')
+          | list | length) > 0
+      }}
+
+
+# ------------------------------------------
+# CrowdSec | Decide whether bootstrap is required
+# ------------------------------------------
+- name: CrowdSec | Detect whether bouncer bootstrap is needed
+  ansible.builtin.set_fact:
+    crowdsec_needs_bouncer: >-
+      {{
+        not crowdsec_traefik_bouncer_exists
+        and
+        (crowdsec_bouncer_key | default('', true) | string | length == 0)
+      }}
+
+
+# ------------------------------------------
+# CrowdSec | Generate Traefik bouncer (first run)
+# ------------------------------------------
+- name: CrowdSec | Generate Traefik bouncer key
+  ansible.builtin.command: docker exec crowdsec cscli bouncers add traefik-bouncer -o raw
+  register: crowdsec_generated_bouncer
+  when:
+    - not ansible_check_mode
+    - crowdsec_needs_bouncer
+  no_log: true
+
+
+# ------------------------------------------
+# CrowdSec | Human handoff for SOPS (interactive)
+# ------------------------------------------
+#
+# This pause is INTENTIONAL and REQUIRED during first-time bootstrap.
+#
+# Why:
+# - CrowdSec bouncer keys must be stored securely in SOPS
+# - This cannot be automated safely without access to encryption keys
+# - The operator must see and acknowledge the generated key
+#
+# Behavior:
+# - In interactive runs (TTY): waits for ENTER
+# - In non-interactive runs (CI, cron, AWX): this task is skipped or will fail
+#
+# Design decision:
+# - The play will STOP after this pause (meta: end_play)
+# - This prevents Traefik from running in a partially secured state
+# - The operator must re-run the playbook after updating SOPS
+#
+- name: CrowdSec | Display Traefik bouncer key for SOPS
+  ansible.builtin.pause:
+    prompt: |
+      ═══════════════════════════════════════════════════════════════
+      🔑 CROWDSEC TRAEFIK BOUNCER KEY GENERATED
+      ═══════════════════════════════════════════════════════════════
+
+      Add the following to your encrypted SOPS secrets:
+
+        crowdsec_bouncer_key: {{ crowdsec_generated_bouncer.stdout }}
+
+      ───────────────────────────────────────────────────────────────
+      IMPORTANT:
+      ───────────────────────────────────────────────────────────────
+
+      CrowdSec and Pangolin are running, but Traefik CANNOT enforce
+      CrowdSec bans until this key is configured.
+
+      For safety, this playbook will now STOP to avoid running Traefik
+      in a partially secured state.
+
+      ───────────────────────────────────────────────────────────────
+      Next steps:
+      ───────────────────────────────────────────────────────────────
+        1. Add the key to your SOPS secrets
+        2. Re-run this playbook
+        3. Traefik will be re-rendered with CrowdSec enforcement enabled
+
+      ═══════════════════════════════════════════════════════════════
+
+      Press ENTER to acknowledge and exit.
+      ═══════════════════════════════════════════════════════════════
+  when:
+    - not ansible_check_mode
+    - crowdsec_needs_bouncer
+    - crowdsec_generated_bouncer is defined
+
+
+- name: CrowdSec | Stop play after bouncer bootstrap
+  ansible.builtin.meta: end_play
+  when:
+    - not ansible_check_mode
+    - crowdsec_needs_bouncer
+    - crowdsec_generated_bouncer is defined
+
+
+# ------------------------------------------
+# CrowdSec | Diagnostics on LAPI failure
+# ------------------------------------------
+- name: CrowdSec | Collect logs if LAPI never became ready
+  ansible.builtin.command: docker logs crowdsec --tail 100
+  register: crowdsec_logs
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - not crowdsec_needs_bouncer
+    - crowdsec_lapi_status.rc != 0
+
+
+- name: CrowdSec | Display startup diagnostics
+  ansible.builtin.debug:
+    msg: |
+      ═══════════════════════════════════════════════════════════════
+      ❌ CROWDSEC FAILED TO BECOME READY
+      ═══════════════════════════════════════════════════════════════
+
+      Recent logs (last 100 lines):
+      ───────────────────────────────────────────────────────────────
+      {{ crowdsec_logs.stdout | default('No logs available') }}
+      ───────────────────────────────────────────────────────────────
+
+      Common fixes:
+        1. Invalid / expired enrollment key
+           → Remove:
+             {{ pangolin_root }}/config/crowdsec/console.yaml
+             {{ pangolin_root }}/config/crowdsec/online_api_credentials.yaml
+             {{ pangolin_root }}/config/crowdsec/db/*
+           → Generate a NEW key in CrowdSec Console
+           → Update SOPS and redeploy
+
+        2. Permission issues
+           → chown -R {{ pangolin_owner }}:{{ pangolin_group }} {{ pangolin_root }}/config/crowdsec
+
+        3. Database corruption
+           → rm -rf {{ pangolin_root }}/config/crowdsec/db/*
+      ═══════════════════════════════════════════════════════════════
+  when:
+    - not ansible_check_mode
+    - not crowdsec_needs_bouncer
+    - crowdsec_lapi_status.rc != 0
+
+- name: CrowdSec | Abort after failed startup
+  ansible.builtin.fail:
+    msg: "CrowdSec failed to start correctly. See diagnostics above."
+  when:
+    - not ansible_check_mode
+    - not crowdsec_needs_bouncer
+    - crowdsec_lapi_status.rc != 0
+
+
+# ------------------------------------------
+# CrowdSec | Enrollment status (non-blocking)
+# ------------------------------------------
+- name: CrowdSec | Check console enrollment status
+  ansible.builtin.command: docker exec crowdsec cscli console status -o json
+  register: crowdsec_console_status_raw
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: CrowdSec | Parse enrollment status
+  ansible.builtin.set_fact:
+    crowdsec_enrolled: >-
+      {{
+        (
+          crowdsec_console_status_raw.stdout | default('{}') | from_json
+        ).get('enrolled',
+          (
+            crowdsec_console_status_raw.stdout | from_json
+          ).get('console', {}).get('Enrolled', false)
+        )
+      }}
+  when:
+    - not ansible_check_mode
+    - crowdsec_console_status_raw.stdout is defined
+
+
+# ------------------------------------------
+# CrowdSec | Manual enrollment
+# ------------------------------------------
+- name: CrowdSec | Display enrollment result
+  ansible.builtin.debug:
+    msg: |
+      {% if crowdsec_manual_enroll is defined and crowdsec_manual_enroll.rc == 0 %}
+      ═══════════════════════════════════════════════════════════════
+      ✅ CROWDSEC ENROLLMENT REQUEST SENT
+      ═══════════════════════════════════════════════════════════════
+
+      IMPORTANT:
+        Go to https://app.crowdsec.net and ACCEPT the enrollment request.
+
+      Until approval:
+        • CrowdSec continues running normally
+        • Local API remains available
+        • Traefik bouncer continues to function
+
+      ───────────────────────────────────────────────────────────────
+      Next steps:
+      ───────────────────────────────────────────────────────────────
+        1. Log in to the CrowdSec console
+        2. Approve the pending enrollment request
+        3. No redeploy is required after approval
+
+      ═══════════════════════════════════════════════════════════════
+
+      {% elif crowdsec_manual_enroll is defined and crowdsec_manual_enroll.rc != 0 %}
+      ═══════════════════════════════════════════════════════════════
+      ❌ CROWDSEC ENROLLMENT FAILED
+      ═══════════════════════════════════════════════════════════════
+
+      Error returned by CrowdSec:
+      ───────────────────────────────────────────────────────────────
+      {{ crowdsec_manual_enroll.stderr }}
+      ───────────────────────────────────────────────────────────────
+
+      Common causes:
+        1. Enrollment key is invalid, expired, or already used
+        2. A pending enrollment already exists in the CrowdSec console
+        3. The console rejected the request
+
+      ───────────────────────────────────────────────────────────────
+      Recovery steps:
+      ───────────────────────────────────────────────────────────────
+        1. Log in to https://app.crowdsec.net
+        2. Delete any pending enrollment requests
+        3. Generate a NEW enrollment key
+        4. Update your SOPS secrets
+        5. Re-run this playbook
+
+      NOTE:
+        CrowdSec will continue to run WITHOUT console enrollment.
+        Local API and Traefik bouncers will still work.
+
+      ═══════════════════════════════════════════════════════════════
+
+      {% else %}
+      ═══════════════════════════════════════════════════════════════
+      ℹ️ CROWDSEC ALREADY ENROLLED / ENROLLMENT SKIPPED
+      ═══════════════════════════════════════════════════════════════
+
+      CrowdSec is already enrolled with the console
+      or enrollment was intentionally skipped.
+
+      No action is required.
+
+      ═══════════════════════════════════════════════════════════════
+      {% endif %}
+  when: not ansible_check_mode
+
+
+# ------------------------------------------
+# CrowdSec | Resiliency warning (non-destructive)
+# ------------------------------------------
+- name: CrowdSec | Check for stale credential files
+  ansible.builtin.stat:
+    path: "{{ pangolin_root }}/config/crowdsec/online_api_credentials.yaml"
+  register: crowdsec_creds_file
+
+- name: CrowdSec | Warn about possible credential corruption
+  ansible.builtin.debug:
+    msg: |
+      ═══════════════════════════════════════════════════════════════
+      ⚠️  CROWDSEC CREDENTIAL FILE DETECTED
+      ═══════════════════════════════════════════════════════════════
+
+      A CrowdSec credentials file was found on disk.
+
+      This is normal during operation, BUT if CrowdSec later enters
+      a restart loop or fails to authenticate, this file is often
+      the cause.
+
+      ───────────────────────────────────────────────────────────────
+      Recommended recovery (ONLY if issues occur):
+      ───────────────────────────────────────────────────────────────
+
+        Remove the following files/directories:
+
+          {{ pangolin_root }}/config/crowdsec/online_api_credentials.yaml
+          {{ pangolin_root }}/config/crowdsec/db/*
+
+        Then:
+          1. Generate a NEW enrollment key (if needed)
+          2. Update your SOPS secrets
+          3. Re-run this playbook
+
+      NOTE:
+        Do NOT delete these files unless CrowdSec is failing.
+        This message is informational and does not indicate an error.
+
+      ═══════════════════════════════════════════════════════════════
+  when: crowdsec_creds_file.stat.exists
+

@@ -79,8 +79,26 @@ tasks:
       - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags "headscale,tailscale,pangolin,newt" --check --diff {{.PLAYBOOK}}
 
   # Single role deploys
-  deploy:tailscale:
-    desc: Deploy Tailscale only
+  deploy:headscale:
+    desc: Deploy Headscale only
     cmds:
-      - echo "🚀 Deploying Tailscale"
-      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags tailscale {{.PLAYBOOK}}
+      - echo "🚀 Deploying Headscale"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags headscale {{.PLAYBOOK}}
+
+  deploy:pangolin:
+    desc: Deploy Pangolin only
+    cmds:
+      - echo "🚀 Deploying Pangolin"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags pangolin {{.PLAYBOOK}}
+
+  deploy:newt:
+    desc: Deploy Newt only
+    cmds:
+      - echo "🚀 Deploying Newt"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags newt {{.PLAYBOOK}}
+
+  deploy:services:
+    desc: Deploy services only (headscale/tailscale/pangolin/newt)
+    cmds:
+      - echo "🚀 Deploying services"
+      - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags "headscale,tailscale,pangolin,newt" {{.PLAYBOOK}}

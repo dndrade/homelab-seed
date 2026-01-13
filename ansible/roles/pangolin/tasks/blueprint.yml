@@ -1,6 +1,7 @@
 ---
-# Blueprint deployment
-
+# ==========================================
+# Blueprint | Local file rendering
+# ==========================================
 - name: Deploy Headscale blueprint file
   ansible.builtin.template:
     src: blueprints/headscale.yml.j2
@@ -10,11 +11,20 @@
     mode: "0644"
   register: pangolin_blueprint_deployed
 
-- name: Read blueprint checksum file
+
+# ==========================================
+# Blueprint | Change detection (checksum)
+# ==========================================
+- name: Check if blueprint checksum file exists
+  ansible.builtin.stat:
+    path: "{{ pangolin_blueprint_dir }}/.headscale.applied.sha256"
+  register: pangolin_checksum_file_stat
+
+- name: Read blueprint checksum file (if exists)
   ansible.builtin.slurp:
     src: "{{ pangolin_blueprint_dir }}/.headscale.applied.sha256"
   register: pangolin_applied_checksum_file
-  failed_when: false
+  when: pangolin_checksum_file_stat.stat.exists
   changed_when: false
 
 - name: Calculate current blueprint checksum
@@ -23,22 +33,78 @@
     checksum_algorithm: sha256
   register: pangolin_blueprint_stat
 
-- name: Apply blueprint via API if changed
+- name: Determine if blueprint should be applied
+  ansible.builtin.set_fact:
+    should_apply_blueprint: >-
+      {{
+        not pangolin_checksum_file_stat.stat.exists or
+        (pangolin_applied_checksum_file.content | default('') | b64decode | trim)
+        != pangolin_blueprint_stat.stat.checksum
+      }}
+
+
+# ==========================================
+# Blueprint | File content load
+# ==========================================
+- name: Read blueprint file content
+  ansible.builtin.slurp:
+    src: "{{ pangolin_blueprint_dir }}/headscale.yml"
+  register: pangolin_blueprint_content
+  when:
+    - not ansible_check_mode
+    - should_apply_blueprint | bool
+
+
+# ==========================================
+# Blueprint | Pangolin API reconciliation
+# ==========================================
+- name: Check if blueprint exists in Pangolin
+  ansible.builtin.uri:
+    url: "{{ pangolin_endpoint }}/api/v1/org/blueprint"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ pangolin_api_token }}"
+    status_code: [200, 404]
+  register: pangolin_blueprint_check
+  when:
+    - not ansible_check_mode
+    - should_apply_blueprint | bool
+  failed_when: false
+
+- name: Create blueprint via API (first deployment)
+  ansible.builtin.uri:
+    url: "{{ pangolin_endpoint }}/api/v1/org/blueprint"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ pangolin_api_token }}"
+      Content-Type: "application/x-yaml"
+    body: "{{ pangolin_blueprint_content.content | b64decode }}"
+    status_code: [200, 201]
+  when:
+    - not ansible_check_mode
+    - should_apply_blueprint | bool
+    - pangolin_blueprint_check.status == 404
+  register: pangolin_blueprint_result
+
+- name: Update blueprint via API (if exists)
   ansible.builtin.uri:
     url: "{{ pangolin_endpoint }}/api/v1/org/blueprint"
     method: PUT
     headers:
       Authorization: "Bearer {{ pangolin_api_token }}"
       Content-Type: "application/x-yaml"
-    src: "{{ pangolin_blueprint_dir }}/headscale.yml"
+    body: "{{ pangolin_blueprint_content.content | b64decode }}"
     status_code: [200]
   when:
     - not ansible_check_mode
-    - >
-      pangolin_applied_checksum_file.content is not defined or
-      (pangolin_applied_checksum_file.content | b64decode | trim) != pangolin_blueprint_stat.stat.checksum
+    - should_apply_blueprint | bool
+    - pangolin_blueprint_check.status == 200
   register: pangolin_blueprint_result
 
+
+# ==========================================
+# Blueprint | State persistence
+# ==========================================
 - name: Save applied blueprint checksum
   ansible.builtin.copy:
     dest: "{{ pangolin_blueprint_dir }}/.headscale.applied.sha256"

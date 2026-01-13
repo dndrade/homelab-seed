@@ -1,0 +1,91 @@
+---
+# ==========================================
+#           Runtime | Compose
+# ==========================================
+
+
+# ------------------------------------------
+# Runtime | Docker Compose definition
+# ------------------------------------------
+- name: Render Pangolin docker-compose (includes CrowdSec service)
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ pangolin_compose_path }}"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0644"
+  notify:
+    - Pangolin | Restart service
+    - Pangolin | Restart Traefik
+
+
+# ------------------------------------------
+# Runtime | CrowdSec acquisition config
+# ------------------------------------------
+- name: Install CrowdSec journalctl acquisition config
+  ansible.builtin.template:
+    src: journalctl.yaml.j2
+    dest: "{{ pangolin_root }}/config/crowdsec/acquis.d/journalctl.yaml"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0644"
+
+- name: Install CrowdSec Traefik acquisition config
+  ansible.builtin.template:
+    src: traefik.yaml.j2
+    dest: "{{ pangolin_root }}/config/crowdsec/acquis.d/traefik.yaml"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0644"
+
+
+# ------------------------------------------
+# Runtime | Environment (.env) materialization
+# ------------------------------------------
+- name: Ensure Pangolin .env file exists with required secrets
+  ansible.builtin.lineinfile:
+    path: "{{ pangolin_root }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    create: true
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0600"
+  loop:
+    - key: "PANGOLIN_SECRET"
+      value: "{{ pangolin_api_token }}"
+
+    - key: "CF_API_TOKEN"
+      value: "{{ cf_api_token }}"
+
+    - key: "CROWDSEC_ENROLL_KEY"
+      value: "{{ crowdsec_enroll_key | default('') }}"
+
+    - key: "CROWDSEC_BOUNCER_KEY"
+      value: "{{ crowdsec_bouncer_key | default('') }}"
+  no_log: true
+
+
+# ------------------------------------------
+# Runtime | Filesystem
+# ------------------------------------------
+- name: Ensure CrowdSec config directory ownership is correct
+  ansible.builtin.file:
+    path: "{{ pangolin_root }}/config/crowdsec"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    recurse: true
+    state: directory
+  when: not ansible_check_mode
+
+
+# ------------------------------------------
+# Runtime | Start / update
+# ------------------------------------------
+- name: Pull and start Pangolin stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ pangolin_root }}"
+    state: present
+    pull: always
+  register: pangolin_stack_started
+  when: not ansible_check_mode

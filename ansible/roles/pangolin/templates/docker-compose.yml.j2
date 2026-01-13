@@ -79,23 +79,23 @@ services:
       - traefik
     environment:
       GID: "1000"
-      COLLECTIONS: >
-        crowdsecurity/traefik
-        crowdsecurity/appsec-virtual-patching
-        crowdsecurity/appsec-generic-rules
-        crowdsecurity/linux      # system attacks
-        crowdsecurity/sshd       # SSH
-        crowdsecurity/iptables   # firewall
-      ENROLL_KEY: ${CROWDSEC_ENROLL_KEY}
+      # per official Pangolin docs
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules crowdsecurity/linux crowdsecurity/iptables"
+      # Parsers
+      PARSERS: "crowdsecurity/whitelists"
+{% if crowdsec_enroll_key is defined and crowdsec_enroll_key != '' %}
+      # Enrollment (only if key is provided)
+      ENROLL_KEY: "${CROWDSEC_ENROLL_KEY}"
       ENROLL_INSTANCE_NAME: "{{ inventory_hostname }}-pangolin-crowdsec"
-      PARSERS: crowdsecurity/whitelists
-      ENROLL_TAGS: docker pangolin
+      ENROLL_TAGS: "docker pangolin"
+{% endif %}
 
     healthcheck:
-      interval: 10s
-      retries: 15
-      timeout: 10s
-      test: ["CMD", "cscli", "capi", "status"]
+      test: ["CMD", "cscli", "lapi", "status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
 
     volumes:
       - ./config/crowdsec:/etc/crowdsec

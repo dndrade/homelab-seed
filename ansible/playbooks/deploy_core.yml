@@ -22,8 +22,11 @@
         
         # Role secrets (optional)
         pangolin_api_token: "{{ sops_secrets.pangolin.pangolin_api_token | default(omit) }}"
-        crowdsec_enroll_key: "{{ sopssecrets.crowdsec.enroll_key | default(omit) }}"
-        crowdsec_bouncer_key: "{{ sopssecrets.crowdsec.bouncer_key | default(omit) }}"
+        cf_api_token: "{{ sops_secrets.pangolin.cf_api_token | default(omit) }}"
+
+        crowdsec_enroll_key: "{{ sops_secrets.crowdsec.enroll_key | default(omit) }}"
+        crowdsec_bouncer_key: "{{ sops_secrets.crowdsec.bouncer_key | default(omit) }}"
+
         
         # Headscale
         headscale_api_key: "{{ sops_secrets.headscale.headscale_api_key | default(omit) }}"
@@ -37,21 +40,21 @@
       no_log: true
 
   roles:
-    - role: 40-maintenance
-      tags: maintenance
-    - role: 00-preflight
-      tags: preflight
-    - role: 10-packages
-      tags: packages
-    - role: 20-docker
-      tags: docker
-    - role: 30-base
-      tags: base
-    - role: headscale
-      tags: headscale
-    - role: tailscale
-      tags: tailscale
+    # - role: 40-maintenance
+    #   tags: maintenance
+    # - role: 00-preflight
+    #   tags: preflight
+    # - role: 10-packages
+    #   tags: packages
+    # - role: 20-docker
+    #   tags: docker
+    # - role: 30-base
+    #   tags: base
+    # - role: headscale
+    #   tags: headscale
+    # - role: tailscale
+    #   tags: tailscale
     - role: pangolin
       tags: pangolin
-    - role: newt
-      tags: newt
+    # - role: newt
+    #   tags: newt
