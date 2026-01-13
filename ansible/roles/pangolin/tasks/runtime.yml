@@ -1,16 +1,89 @@
 ---
-- name: Render Pangolin docker-compose file
+# ==========================================
+#        CrowdSec (Pangolin integration)
+# ==========================================
+
+- name: Ensure CrowdSec config directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ pangolin_root }}/config/crowdsec"
+    - "{{ pangolin_root }}/config/crowdsec/acquis.d"
+    - "{{ pangolin_root }}/config/crowdsec/db"
+
+# ------------------------------------------
+# CrowdSec log acquisition (host logs)
+# ------------------------------------------
+
+- name: Install CrowdSec journalctl acquisition config
+  ansible.builtin.template:
+    src: journalctl.yaml.j2
+    dest: "{{ pangolin_root }}/config/crowdsec/acquis.d/journalctl.yaml"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: "0644"
+
+- name: Ensure CrowdSec acquis.d/traefik.yaml exists
+  ansible.builtin.template:
+    src: traefik.yaml.j2
+    dest: "{{ pangolin_root }}/config/crowdsec/acquis.d/traefik.yaml"
+    owner: "{{ pangolin_owner }}"
+    group: "{{ pangolin_group }}"
+    mode: '0644'
+  notify: Pangolin | CrowdSec Restart
+
+- name: Render Pangolin docker-compose (includes crowdsec service)
   ansible.builtin.template:
     src: docker-compose.yml.j2
     dest: "{{ pangolin_compose_path }}"
     owner: "{{ pangolin_owner }}"
     group: "{{ pangolin_group }}"
-    mode: "0644"
+    mode: '0644'
   notify:
     - Pangolin | Restart service
     - Pangolin | Restart Traefik
 
-- name: Ensure Pangolin stack is running
+- name: Pull & start CrowdSec container first
+  community.docker.docker_compose_v2:
+    project_src: "{{ pangolin_root }}"
+    state: started
+    services: crowdsec
+  when: not ansible_check_mode
+
+- name: Generate Traefik bouncer API key      # noqa: var-naming[no-role-prefix]
+  ansible.builtin.shell: |
+    docker exec crowdsec cscli bouncers add traefik-bouncer || true
+  register: crowdsec_bouncer_key_raw
+  changed_when: false
+  retries: 3
+  delay: 5
+  check_mode: no
+
+- name: Extract bouncer key (first run shows it)      # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    crowdsec_bouncer_key_extracted: "{{ crowdsec_bouncer_key_raw.stdout_lines | default([]) | last | regex_search('API key for.*: (\\S+)', '\\1') | default('') | first }}"
+  when: 
+    - crowdsec_bouncer_key_raw.stdout_lines is defined
+    - crowdsec_bouncer_key_raw.stdout_lines | length > 0
+    - crowdsec_bouncer_key_raw.stdout_lines[-1] is search('API key')
+
+- name: Display bouncer key for SOPS update (first deploy)
+  ansible.builtin.debug:
+    msg: |
+      ======================================================
+      Copy this to your SOPS file → sopssecrets.crowdsec.bouncer_key:
+        {{ crowdsec_bouncer_key_extracted | default('NOT_GENERATED_YET') }}
+      ======================================================
+  when: 
+    - crowdsec_bouncer_key_extracted is defined
+    - crowdsec_bouncer_key_extracted != '' 
+    - crowdsec_bouncer_key_extracted != 'NOT_GENERATED_YET'
+
+- name: Ensure full Pangolin stack running
   community.docker.docker_compose_v2:
     project_src: "{{ pangolin_root }}"
     state: present

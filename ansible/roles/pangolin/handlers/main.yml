@@ -18,3 +18,12 @@
     state: present
     restarted: true
   when: not ansible_check_mode
+
+- name: Pangolin | CrowdSec Restart
+  community.docker.docker_compose_v2:
+    project_src: "{{ pangolin_root }}"
+    services:
+      - crowdsec
+    state: present
+    restarted: true
+  when: not ansible_check_mode

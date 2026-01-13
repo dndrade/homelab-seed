@@ -59,14 +59,49 @@ services:
     environment:
       - CF_DNS_API_TOKEN=${CF_API_TOKEN}
     volumes:
-      # Static + dynamic config exactly like docs expect
+      # Static + dynamic config
       - ./config/traefik:/etc/traefik:ro
+      # Letsencrypt
       - ./config/letsencrypt:/letsencrypt
       # Shared data (certs & dynamic config)
       - pangolin-data:/var/certificates:ro
       - pangolin-data:/var/dynamic:ro
       # Optional: docker.sock for container discovery
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Traefik logs (CrowdSec reads these)
+      - ./config/traefik/logs:/var/log/traefik
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    depends_on:
+      - traefik
+    environment:
+      GID: "1000"
+      COLLECTIONS: >
+        crowdsecurity/traefik
+        crowdsecurity/appsec-virtual-patching
+        crowdsecurity/appsec-generic-rules
+        crowdsecurity/linux      # system attacks
+        crowdsecurity/sshd       # SSH
+        crowdsecurity/iptables   # firewall
+      ENROLL_KEY: ${CROWDSEC_ENROLL_KEY}
+      ENROLL_INSTANCE_NAME: "{{ inventory_hostname }}-pangolin-crowdsec"
+      PARSERS: crowdsecurity/whitelists
+      ENROLL_TAGS: docker pangolin
+
+    healthcheck:
+      interval: 10s
+      retries: 15
+      timeout: 10s
+      test: ["CMD", "cscli", "capi", "status"]
+
+    volumes:
+      - ./config/crowdsec:/etc/crowdsec
+      - ./config/crowdsec/db:/var/lib/crowdsec/data
+      - ./config/traefik/logs:/var/log/traefik:ro
+      - /var/log/journal:/var/log/host:ro
 
 networks:
   default:

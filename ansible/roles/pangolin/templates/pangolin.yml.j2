@@ -4,6 +4,14 @@ http:
       redirectScheme:
         scheme: https
 
+    crowdsec:
+      plugin:
+        crowdsec:
+          crowdsecLapiKey: "${CROWDSEC_BOUNCER_KEY}"
+          crowdsecLapiHost: "http://crowdsec:8080"
+          banHTMLFilePath: "/etc/traefik/ban.html"
+          captchaHTMLFilePath: "/etc/traefik/captcha.html"
+
   routers:
     # HTTP to HTTPS redirect router
     main-app-router-redirect:
@@ -20,6 +28,8 @@ http:
       service: next-service
       entryPoints:
         - websecure
+      middlewares:
+        - crowdsec  
       tls:
         certResolver: letsencrypt
 
@@ -29,6 +39,8 @@ http:
       service: api-service
       entryPoints:
         - websecure
+      middlewares:
+        - crowdsec
       tls:
         certResolver: letsencrypt
 
@@ -38,6 +50,8 @@ http:
       service: api-service
       entryPoints:
         - websecure
+      middlewares:
+        - crowdsec
       tls:
         certResolver: letsencrypt
 
