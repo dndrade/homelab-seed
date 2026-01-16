@@ -26,6 +26,20 @@ tasks:
       - task terraform:plan
       - task ansible:check
 
+  # rotate:
+  #   desc: Rotate all infrastructure secrets
+  #   cmds:
+  #     - echo "🔄 Rotating secrets"
+  #     - task ansible:rotate-secrets
+  #     - echo "✅ Secret rotation complete"
+
+
+  # rotate-:check:
+  #   desc: Dry-run secret rotation
+  #   cmds:
+  #     - echo "🔍 Secret rotation dry-run"
+  #     - task ansible:rotate-secrets:check
+
   destroy:
     desc: Tear everything down
     cmds:

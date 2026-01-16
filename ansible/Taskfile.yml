@@ -1,25 +1,15 @@
-# version: '3'
+#
+#
+# Commands:
+#   task ansible:ping
+#   task ansible:deploy
+#   task ansible:check
+#   task ansible:check:<role>
+#   task ansible:rotate
+#   task ansible:rotate:<role>
+#
 
-# vars:
-#   ANSIBLE_CONFIG: ansible/ansible.cfg
-#   INVENTORY: ansible/inventories/hosts.yml
-#   PLAYBOOK: ansible/playbooks/deploy_core.yml
-#   PING: ansible/playbooks/ping.yml
 
-# tasks:
-#   ping:
-#     cmds:
-#       - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} {{.PING}}
-
-#   deploy:
-#     cmds:
-#       - echo "📦 Ansible deploy"
-#       - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} {{.PLAYBOOK}}
-
-#   check:
-#     cmds:
-#       - echo "🔍 Ansible check (dry-run)"
-#       - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --check --diff {{.PLAYBOOK}}
 
 version: '3'
 
@@ -102,3 +92,33 @@ tasks:
     cmds:
       - echo "🚀 Deploying services"
       - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --tags "headscale,tailscale,pangolin,newt" {{.PLAYBOOK}}
+
+  # rotate:
+  #   desc: Rotate all infrastructure secrets
+  #   cmds:
+  #     - echo "🔄 Rotating secrets"
+  #     - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} ansible/playbooks/rotate-secrets.yml
+
+  # rotate:check:
+  #   desc: Dry-run secret rotation
+  #   cmds:
+  #     - echo "🔍 Secret rotation check (dry-run)"
+  #     - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} --check --diff ansible/playbooks/rotate-secrets.yml
+
+  # rotate:crowdsec:
+  #   desc: Rotate CrowdSec secrets only
+  #   cmds:
+  #     - echo "🔄 Rotating CrowdSec secrets"
+  #     - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} -e "rotation_services=['crowdsec']" ansible/playbooks/rotate-secrets.yml
+
+  # rotate:headscale:
+  #   desc: Rotate Headscale secrets only
+  #   cmds:
+  #     - echo "🔄 Rotating Headscale secrets"
+  #     - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} -e "rotation_services=['headscale']" ansible/playbooks/rotate-secrets.yml
+
+  # rotate:pangolin:
+  #   desc: Rotate Pangolin/Cloudflare secrets only
+  #   cmds:
+  #     - echo "🔄 Rotating Pangolin secrets"
+  #     - env ANSIBLE_CONFIG={{.ANSIBLE_CONFIG}} ansible-playbook -i {{.INVENTORY}} -e "rotation_services=['pangolin']" ansible/playbooks/rotate-secrets.yml
